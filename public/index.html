@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Chat App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .chat-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        #messages {
+            height: 300px;
+            border: 2px solid #ddd;
+            padding: 15px;
+            overflow-y: auto;
+            background-color: #fafafa;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            line-height: 1.4;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 5px;
+        }
+
+        .user-message {
+            background-color: #e3f2fd;
+            border-left: 4px solid #2196f3;
+        }
+
+        .system-message {
+            background-color: #f3e5f5;
+            border-left: 4px solid #9c27b0;
+            font-style: italic;
+        }
+
+        .timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+
+        .sender {
+            font-weight: bold;
+            color: #1976d2;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        #nameInput {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #messageInput {
+            flex: 3;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #sendButton {
+            padding: 10px 20px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+
+        #sendButton:hover {
+            background-color: #45a049;
+        }
+
+        #sendButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #shareMediaButton {
+            padding: 10px 20px;
+            background-color: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-left: 10px;
+        }
+
+        #shareMediaButton:hover {
+            background-color: #f57c00;
+        }
+
+        #shareMediaButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        #restartButton {
+            padding: 10px 20px;
+            background-color: #9c27b0;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+            margin-left: 10px;
+        }
+
+        #restartButton:hover {
+            background-color: #7b1fa2;
+        }
+
+        .media-container {
+            margin-top: 20px;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .video-wrapper {
+            position: relative;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .video-wrapper video {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .connection-status {
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .connected {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .disconnected {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .peer-status {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="chat-container">
+        <h1>WebSocket Multi-Peer Chat App</h1>
+
+        <div id="connectionStatus" class="connection-status disconnected">
+            Connecting to server...
+        </div>
+
+        <div id="messages"></div>
+
+        <div class="input-container">
+            <input type="text" id="nameInput" placeholder="Your name" value="Anonymous">
+            <input type="text" id="messageInput" placeholder="Type your message here..." disabled>
+            <button id="sendButton" disabled>Send</button>
+            <button id="shareMediaButton">Start Sharing</button>
+            <button id="restartButton">Restart</button>
+        </div>
+
+        <div class="media-container">
+            <div class="peer-status" id="peerStatus">
+                Active connections: 0
+            </div>
+            <div class="video-grid" id="videoGrid">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messagesDiv = document.getElementById('messages');
+        const messageInput = document.getElementById('messageInput');
+        const nameInput = document.getElementById('nameInput');
+        const sendButton = document.getElementById('sendButton');
+        const connectionStatus = document.getElementById('connectionStatus');
+        const shareMediaButton = document.getElementById('shareMediaButton');
+        const restartButton = document.getElementById('restartButton');
+        const videoGrid = document.getElementById('videoGrid');
+        const peerStatus = document.getElementById('peerStatus');
+
+        const AUTO_SHARE = true;
+        let ws;
+        let isConnected = false;
+        let localStream = null;
+        let peerConnections = new Map(); // Map of peerId -> RTCPeerConnection
+        let isMediaSharing = false;
+        let restartInProgress = false;
+
+        // Random id to identify our own outgoing video stream
+        const ownId = "own_" + Math.random().toString(36).substr(2, 9);
+
+        function handleIncomingMessage(obj) {
+            // Display all messages we receive including signaling for testing purposes
+            displayMessage(obj);
+
+            if (obj.type === "signaling") {
+                const signalingObj = JSON.parse(obj.message);
+                const peerId = obj.id || 'unknown';
+
+                // Don't handle our own signaling messages
+                //if (peerId === ownId) return;
+
+                if (signalingObj.type === "offer") {
+                    handleOffer(signalingObj, peerId);
+                } else if (signalingObj.type === "answer") {
+                    handleAnswer(signalingObj, peerId);
+                } else if (signalingObj.candidate) {
+                    handleIceCandidate(signalingObj, peerId);
+                }
+            }
+        }
+
+        //streams send from server to this client
+        async function handleOffer(offer, peerId) {
+            console.log('Handling offer from peer:', peerId);
+            let str = formatSdpMessage(offer);
+            console.warn(str);
+
+
+            // Create peer connection if it doesn't exist
+            if (!peerConnections.has(peerId)) {
+                createPeerConnection(peerId);
+            }
+
+            const peerConnection = peerConnections.get(peerId);
+
+            try {
+                await peerConnection.setRemoteDescription(offer);
+                const answer = await peerConnection.createAnswer();
+                await peerConnection.setLocalDescription(answer);
+
+                console.log('Sending answer from peer:', peerId);
+                let str = formatSdpMessage(answer);
+                console.warn(str);
+                sendSignalingMessage(JSON.stringify(answer), peerId);
+            } catch (error) {
+                console.error('Error handling offer:', error);
+            }
+        }
+        function formatSdpMessage(message) {
+            const lines = message.sdp.split('\r\n').filter(line => line.trim() !== '');
+            const sections = [[]];
+
+            for (const line of lines) {
+                if (line.startsWith('m=')) {
+                    // Start of new media section
+                    sections.push([line]);
+                } else {
+                    // Append to current section
+                    sections[sections.length - 1].push(line);
+                }
+            }
+
+            const formatted = [`SDP Type: ${message.type.toUpperCase()}\n`];
+
+            sections.forEach((section, index) => {
+                if (index === 0) {
+                    formatted.push(`=== Session ===`);
+                } else {
+                    const mediaLine = section[0];
+                    const mediaType = mediaLine.split(' ')[0].substring(2); // m=audio...
+                    formatted.push(`\n=== Media (${mediaType.toUpperCase()}) ===`);
+                }
+
+                section.forEach(line => {
+                    formatted.push(line);
+                });
+            });
+
+            return formatted.join('\n');
+        }
+        async function handleAnswer(answer, peerId) {
+            console.log('Handling answer from peer:', peerId);
+            let str = formatSdpMessage(answer);
+            console.warn(str);
+
+            const peerConnection = peerConnections.get(peerId);
+            if (peerConnection) {
+                try {
+                    await peerConnection.setRemoteDescription(answer);
+                } catch (error) {
+                    console.error('Error handling answer:', error);
+                }
+            }
+        }
+
+        async function handleIceCandidate(candidate, peerId) {
+            console.log('Handling ICE candidate from peer:', peerId);
+
+            const peerConnection = peerConnections.get(peerId);
+            if (peerConnection) {
+                try {
+                    await peerConnection.addIceCandidate(candidate);
+                } catch (error) {
+                    console.error('Error handling ICE candidate:', error);
+                }
+            }
+        }
+
+        function connect() {
+            if (restartInProgress) return;
+
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.host}`;
+
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = function () {
+                console.log('Connected to WebSocket server');
+                isConnected = true;
+                updateConnectionStatus(true);
+                messageInput.disabled = false;
+                sendButton.disabled = false;
+
+                setTimeout(() => {
+                    if (AUTO_SHARE && !isMediaSharing) {
+                        setMediaSharing(true);
+                    }
+                }, 1000);
+            };
+
+            ws.onmessage = function (event) {
+                const data = JSON.parse(event.data);
+                handleIncomingMessage(data);
+            };
+
+            ws.onclose = function () {
+                console.log('Disconnected from WebSocket server');
+                isConnected = false;
+                updateConnectionStatus(false);
+                messageInput.disabled = true;
+                sendButton.disabled = true;
+
+                // Clear all peer connections on disconnect
+                cleanupAllConnections();
+
+                // Try to reconnect after 3 seconds if not restarting
+                if (!restartInProgress) {
+                    setTimeout(connect, 3000);
+                }
+            };
+
+            ws.onerror = function (error) {
+                console.error('WebSocket error:', error);
+            };
+        }
+
+        function updateConnectionStatus(connected) {
+            if (connected) {
+                connectionStatus.textContent = 'Connected to chat server';
+                connectionStatus.className = 'connection-status connected';
+            } else {
+                connectionStatus.textContent = 'Disconnected from server. Reconnecting...';
+                connectionStatus.className = 'connection-status disconnected';
+            }
+        }
+
+        function displayMessage(data) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${data.type}-message`;
+
+                messageDiv.innerHTML = `
+                    <span class="sender">${data.id}:</span> 
+                    ${data.message}
+                `;
+
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function sendMessage() {
+            const message = messageInput.value.trim();
+
+            if (message && isConnected) {
+                sendTextMessage(message);
+                messageInput.value = '';
+            }
+        }
+
+        function sendTextMessage(message) {
+            const sender = nameInput.value.trim() || 'Anonymous';
+            ws.send(JSON.stringify({
+                type: "text",
+                message: message,
+                id: ownId
+            }));
+        }
+
+        function sendSignalingMessage(message, id) {
+            if (!isConnected) return;
+
+            const sender = nameInput.value.trim() || 'Anonymous';
+            ws.send(JSON.stringify({
+                type: "signaling",
+                message: message,
+                id: id,
+            }));
+        }
+
+        async function setMediaSharing(enable) {
+            if (enable && !isMediaSharing) {
+                await startMediaSharing();
+            } else if (!enable && isMediaSharing) {
+                stopMediaSharing();
+            }
+        }
+
+        async function startMediaSharing() {
+            try {
+                console.log('Starting media sharing...');
+
+                // Get user media
+                localStream = await navigator.mediaDevices.getUserMedia({
+                    video: true,
+                    audio: true
+                });
+
+                // Create local video element
+                createVideoElement(ownId, localStream, true);
+
+                // Create offer for outgoing peer connection
+                await createOffer();
+
+                shareMediaButton.textContent = 'Stop Sharing';
+                shareMediaButton.style.backgroundColor = '#f44336';
+                isMediaSharing = true;
+
+                console.log('Media sharing started');
+
+            } catch (error) {
+                console.error('Error accessing media devices:', error);
+                alert('Could not access camera/microphone. Please check permissions.');
+            }
+        }
+
+        function stopMediaSharing() {
+            console.log('Stopping media sharing...');
+
+            // Stop all tracks
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    track.stop();
+                });
+                localStream = null;
+            }
+
+            // Remove local video element
+            removeVideoElement(ownId);
+
+            // Close all peer connections
+            cleanupAllConnections();
+
+            shareMediaButton.textContent = 'Start Sharing';
+            shareMediaButton.style.backgroundColor = '#ff9800';
+            isMediaSharing = false;
+
+            console.log('Media sharing stopped');
+        }
+
+        //Create an offer for the outgoing connection to upload our media
+        async function createOffer() {
+            if (!peerConnections.has(ownId)) {
+                createPeerConnection(ownId);
+            }
+
+            const peerConnection = peerConnections.get(ownId);
+
+            // Add local stream to peer connection
+            if (localStream) {
+                localStream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, localStream);
+                });
+            }
+
+            try {
+                const offer = await peerConnection.createOffer();
+
+                console.log('Sending offer from peer:', ownId);
+                let str = formatSdpMessage(offer);
+                console.warn(str);
+                await peerConnection.setLocalDescription(offer);
+                sendSignalingMessage(JSON.stringify(offer), ownId);
+            } catch (error) {
+                console.error('Error creating offer:', error);
+            }
+        }
+
+        function createPeerConnection(peerId) {
+            console.log('Creating peer connection for:', peerId);
+
+            const peerConnection = new RTCPeerConnection({
+                iceServers: [
+                ]
+            });
+
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    console.log('ICE candidate generated for peer:', peerId);
+                    const candidateMessage = JSON.stringify(event.candidate);
+                    sendSignalingMessage(candidateMessage, ownId);
+                }
+            };
+
+            // Handle remote streams
+            peerConnection.ontrack = (event) => {
+                console.log('Remote stream received from peer:', peerId);
+                const remoteStream = event.streams[0];
+                createVideoElement(peerId, remoteStream, false);
+            };
+
+
+            //TODO: This one is currently not triggered. Instead the incoming
+            //has to use createDataChannel (might be a media soup requirement?)
+            peerConnection.ondatachannel = (event) => {
+                const channel = event.channel;
+                console.log(`Incoming data channel: ${channel.label}`);
+            };
+
+            // Handle connection state changes
+            peerConnection.onconnectionstatechange = () => {
+                console.log(`Peer connection state for ${peerId}:`, peerConnection.connectionState);
+
+                if (peerConnection.connectionState === 'failed' ||
+                    peerConnection.connectionState === 'disconnected' ||
+                    peerConnection.connectionState === 'closed') {
+                    removeVideoElement(peerId);
+                    peerConnections.delete(peerId);
+                    updatePeerStatus();
+                }
+            };
+
+            peerConnections.set(peerId, peerConnection);
+            updatePeerStatus();
+
+            console.log('Peer connection created for:', peerId);
+        }
+
+        function createVideoElement(peerId, stream, isLocal) {
+            // Remove existing video element if it exists
+            removeVideoElement(peerId);
+
+            const videoWrapper = document.createElement('div');
+            videoWrapper.className = 'video-wrapper';
+            videoWrapper.id = `video-wrapper-${peerId}`;
+
+            const video = document.createElement('video');
+            video.id = `video-${peerId}`;
+            video.autoplay = true;
+            video.playsInline = true;
+            video.muted = isLocal; // Mute local video to prevent feedback
+            video.srcObject = stream;
+
+            const label = document.createElement('div');
+            label.className = 'video-label';
+            label.textContent = isLocal ? 'You (Local)' : `Peer ${peerId}`;
+
+            videoWrapper.appendChild(video);
+            videoWrapper.appendChild(label);
+            videoGrid.appendChild(videoWrapper);
+
+            console.log(`Video element created for ${isLocal ? 'local' : 'remote'} peer:`, peerId);
+        }
+
+        function removeVideoElement(peerId) {
+            const videoWrapper = document.getElementById(`video-wrapper-${peerId}`);
+            if (videoWrapper) {
+                videoWrapper.remove();
+                console.log('Video element removed for peer:', peerId);
+            }
+        }
+
+        function cleanupAllConnections() {
+            console.log('Cleaning up all peer connections...');
+
+            // Close all peer connections
+            peerConnections.forEach((peerConnection, peerId) => {
+                peerConnection.close();
+                removeVideoElement(peerId);
+            });
+
+            peerConnections.clear();
+            updatePeerStatus();
+        }
+
+        function updatePeerStatus() {
+            const activeConnections = peerConnections.size;
+            peerStatus.textContent = `Active connections: ${activeConnections}`;
+        }
+
+        function restart() {
+            console.log('Restarting application...');
+            restartInProgress = true;
+
+            // Stop media sharing
+            if (isMediaSharing) {
+                stopMediaSharing();
+            }
+
+            // Close WebSocket connection
+            if (ws) {
+                ws.close();
+            }
+
+            // Clean up all connections
+            cleanupAllConnections();
+
+            // Reset state
+            isConnected = false;
+            isMediaSharing = false;
+
+            // Update UI
+            updateConnectionStatus(false);
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            shareMediaButton.textContent = 'Start Sharing';
+            shareMediaButton.style.backgroundColor = '#ff9800';
+
+            // Restart connection after a short delay
+            setTimeout(() => {
+                restartInProgress = false;
+                connect();
+            }, 1000);
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', sendMessage);
+
+        shareMediaButton.addEventListener('click', () => {
+            setMediaSharing(!isMediaSharing);
+        });
+
+        restartButton.addEventListener('click', restart);
+
+        messageInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        nameInput.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                messageInput.focus();
+            }
+        });
+
+        // Connect to WebSocket server when page loads
+        connect();
+    </script>
+</body>
+
+</html>

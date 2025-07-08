@@ -1,0 +1,35 @@
+{
+  "name": "awrtc_mediasoup",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "type": "commonjs",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node dist/index.js",
+    "build": "tsc",
+    "dev": "ts-node-dev --respawn src/server.ts",
+    "postinstall": "patch-package"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/lodash": "^4.17.17",
+    "awrtc_signaling": "file:../main_new/awrtc/signaling",
+    "express": "^5.1.0",
+    "lodash": "^4.17.21",
+    "mediasoup": "^3.16.5",
+    "mediasoup-client": "^3.12.4",
+    "nodemon": "^3.1.10",
+    "uuid": "^11.1.0",
+    "ws": "^8.18.2"
+  },
+  "devDependencies": {
+    "@tsconfig/node20": "^20.1.5",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.15.30",
+    "patch-package": "^8.0.0",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  }
+}
