@@ -20,7 +20,7 @@ export class SoupSignalingServer {
 
     public async init(config: RelayServerConfig) {
         const soupServer = new SoupServer();
-        await soupServer.init();
+        await soupServer.init(config.listenInfos);
 
         config.apps.forEach((app) => {
             if (app.relay) {

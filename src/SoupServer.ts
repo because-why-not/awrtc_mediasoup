@@ -1,7 +1,7 @@
 import * as mediasoup from "mediasoup";
 import * as RtpHelper from "./rtphelper";
 import * as SdpBridge from "./external/mediasoup-sdp-bridge/index";
-import { Worker, WebRtcServer, Router, RtpCodecCapability, WebRtcTransportOptions, RtpCapabilities, WebRtcTransport, Consumer } from "mediasoup/types"
+import { Worker, WebRtcServer, Router, RtpCodecCapability, WebRtcTransportOptions, RtpCapabilities, WebRtcTransport, Consumer, TransportListenInfo } from "mediasoup/types"
 import { IncomingPeerEndpoint, OutgoingPeerEndpoint, SdpMessageObj } from "./PeerEndpoint";
 
 
@@ -21,8 +21,7 @@ class SoupServer {
         this.webRtcServer = null;
         this.router = null;
     }
-
-    async init() {
+    async init(listenInfos: TransportListenInfo[]) {
         //setup media soup and handlers
         mediasoup.setLogEventListeners({
             ondebug: undefined,
@@ -79,19 +78,7 @@ class SoupServer {
 
         this.webRtcServer = await this.soupWorker.createWebRtcServer(
             {
-                listenInfos:
-                    [
-                        {
-                            protocol: 'udp',
-                            ip: LOCAL_IP,
-                            port: 20000
-                        },
-                        {
-                            protocol: 'tcp',
-                            ip: LOCAL_IP,
-                            port: 20000
-                        }
-                    ]
+                listenInfos:listenInfos
             });
     }
 

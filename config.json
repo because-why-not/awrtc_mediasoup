@@ -1,19 +1,28 @@
 {
+    "listenInfos": [
+        {
+            "protocol": "udp",
+            "ip": "192.168.1.46",
+            "port": 20000
+        },
+        {
+            "protocol": "tcp",
+            "ip": "192.168.1.46",
+            "port": 20000
+        }
+    ],
     "log_verbose": true,
-    "httpConfig":
-    {
+    "httpConfig": {
         "port": 12776,
         "host": "::"
     },
-    "httpsConfig":
-    {
+    "httpsConfig": {
         "port": 12777,
         "host": "::",
         "ssl_key_file": "ssl.key",
         "ssl_cert_file": "ssl.crt"
     },
-    "maxPayload":
-        1048576,
+    "maxPayload": 1048576,
     "apps": [
         {
             "name": "Relay",

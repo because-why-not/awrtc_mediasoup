@@ -1,4 +1,5 @@
 import { AppConfig, ServerConfig } from "awrtc_signaling";
+import { TransportListenInfo } from "mediasoup/types";
 
 export interface RelayAppConfig extends AppConfig {
   relay?: boolean;
@@ -6,4 +7,5 @@ export interface RelayAppConfig extends AppConfig {
 
 export interface RelayServerConfig extends Omit<ServerConfig, 'apps'> {
   apps: RelayAppConfig[];
+  listenInfos: TransportListenInfo[]
 }
