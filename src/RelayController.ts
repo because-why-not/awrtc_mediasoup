@@ -1,6 +1,6 @@
 import { PeerPool, SignalingPeer, WebsocketNetworkServer, AppConfig, ConnectionId, NetEventType, NetworkEvent, Protocol } from "awrtc_signaling";
-import { SoupServer } from "./soupserver";
-import { IncomingPeerEndpoint, OutgoingPeerEndpoint } from "./clientendpoint";
+import { SoupServer } from "./SoupServer";
+import { IncomingPeerEndpoint, OutgoingPeerEndpoint } from "./PeerEndpoint";
 
 
 

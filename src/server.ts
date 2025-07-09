@@ -1,6 +1,9 @@
-import { SignalingServer } from "./signalingserver";
+import { RelayServerConfig } from "./RelayServerConfig";
+import { SoupSignalingServer } from "./SoupSignalingServer";
 
 
 
-let signalingServer = new SignalingServer();
-signalingServer.init();
+let config : RelayServerConfig = require("../config.json");
+
+let signalingServer = new SoupSignalingServer();
+signalingServer.init(config);

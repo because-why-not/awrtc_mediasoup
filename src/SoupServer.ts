@@ -2,7 +2,7 @@ import * as mediasoup from "mediasoup";
 import * as RtpHelper from "./rtphelper";
 import * as SdpBridge from "./external/mediasoup-sdp-bridge/index";
 import { Worker, WebRtcServer, Router, RtpCodecCapability, WebRtcTransportOptions, RtpCapabilities, WebRtcTransport, Consumer } from "mediasoup/types"
-import { ClientEndpoint, IncomingPeerEndpoint, OutgoingPeerEndpoint, SdpMessageObj } from "./clientendpoint";
+import { IncomingPeerEndpoint, OutgoingPeerEndpoint, SdpMessageObj } from "./PeerEndpoint";
 
 
 console.log(mediasoup.version);
@@ -319,125 +319,6 @@ class SoupServer {
 
         return transport
     }
-
-
-
-
-
-    //This sets up handling to receive data channel messages sent by the client
-    //TODO: streamId should be the id used for createDataChannel uptions together
-    //with negotated:true. We currently just guess these. 
-    //Using id's works for client -> server messaging but so far failed to
-    //work for server -> client so we keep it at guessing for now
-    private async addReceivingDataChannels(client: ClientEndpoint) {
-
-        const directTransport = await this.router.createDirectTransport();
-
-        //producer where incoming data arrives
-        const dataProducerReliable = await client.incomingPeer.transport.produceData({
-            sctpStreamParameters: {
-                streamId: 1,
-                ordered: true,
-                maxRetransmits: undefined,
-            },
-            label: 'reliable',
-        });
-        //consumer that sends it to the directTransport where we receive it via the event handler
-        const dataConsumerReliable = await directTransport.consumeData({
-            dataProducerId: dataProducerReliable.id,
-        });
-        dataConsumerReliable.on('message', (message) => {
-            console.log('Received reliable message from client:', message.toString());
-            if ((client as any).dcReliableProducer) {
-                console.log('attempting to respond');
-                (client as any).dcReliableProducer.send("This message is suppose to arrive via RELIABLE channel");
-            }
-        });
-        (client.incomingPeer as any).dataProducerReliable = dataProducerReliable;
-
-        const dataProducerUnreliable = await client.incomingPeer.transport.produceData({
-            sctpStreamParameters: {
-                streamId: 3,
-                ordered: false,
-                maxRetransmits: 0,
-            },
-            label: 'unreliable',
-        });
-        const dataConsumerUnreliable = await directTransport.consumeData({
-            dataProducerId: dataProducerUnreliable.id,
-        });
-        dataConsumerUnreliable.on('message', (message) => {
-            console.log('Received unreliable message from client:', message.toString());
-            //dataConsumerUnreliable.send("unreliable response");
-            if ((client as any).dcUnreliableProducer) {
-                console.log('attempting to respond');
-                (client as any).dcUnreliableProducer.send("This message is suppose to arrive via UNRELIABLE channel");
-            }
-        });
-        (client.incomingPeer as any).dataProducerUnreliable = dataProducerUnreliable;
-    }
-    /**This does not yet work correctly.
-     * Problems (unidirectional from server to client):
-     * The streamId appears to be ignored. The client must use id0 and id1 for 
-     * it to receive any messages from mediasoup. ondatachannel is no triggered
-     * 
-     * 
-     * Bidirectional messages do apparently sometimes though?
-     * 
-     * @param transport 
-     * @param sdpEndpoint 
-     * @param to 
-     */
-    private async addSendingDataChannels(transport: WebRtcTransport, sdpEndpoint: SdpBridge.SdpEndpoint, to: ClientEndpoint) {
-
-        //this will append the data channel parts to the sdp
-        sdpEndpoint.receiveData();
-
-        //let's us interface with the transport directly (rather than relay them)
-        const directTransport = await this.router.createDirectTransport();
-
-
-
-        //creates a producer that let's use send data to the directTransport
-
-
-        const dcReliableProducer = await directTransport.produceData({
-            sctpStreamParameters: {
-                //value does not matter?
-                streamId: 6,
-                ordered: true,
-                maxRetransmits: undefined,
-            },
-            label: 'reliable',
-        });
-
-
-        //creates a consumer that sends data via the transport
-        const dcReliableConsumer = await transport.consumeData({
-            dataProducerId: dcReliableProducer.id
-        });
-
-
-        const dcUnreliableProducer = await directTransport.produceData({
-            sctpStreamParameters: {
-                streamId: 7,
-                ordered: false,
-                maxRetransmits: 0,
-            },
-            label: 'unreliable',
-        });
-        //creates a consumer that sends data via the transport
-        const dcUnreliableConsumer = await transport.consumeData({
-            dataProducerId: dcUnreliableProducer.id
-        });
-
-
-        //this is used to later feed messages into the system
-        (to as any).dcReliableProducer = dcReliableProducer;
-        (to as any).dcUnreliableProducer = dcUnreliableProducer;
-
-    }
-
 }
 
 export { SoupServer };

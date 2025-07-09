@@ -5,9 +5,12 @@ import ws from "ws";
 
 import { WebsocketNetworkServer, DefaultPeerPool, ServerConfig } from "awrtc_signaling"
 import { RelayController } from "./RelayController";
-import { SoupServer } from "./soupserver";
+import { SoupServer } from "./SoupServer";
+import { RelayServerConfig } from "./RelayServerConfig";
 
-export class SignalingServer {
+//This server works similar to the default setup of awrtc_signaling but
+//adds our relay functionality if an app has set relay to true. 
+export class SoupSignalingServer {
 
     signalingServer: WebsocketNetworkServer;
 
@@ -15,65 +18,16 @@ export class SignalingServer {
         this.signalingServer = new WebsocketNetworkServer();
     }
 
-    public async init() {
+    public async init(config: RelayServerConfig) {
         const soupServer = new SoupServer();
         await soupServer.init();
 
-
-        let config = {
-            "log_verbose": true,
-            "adminToken": null,
-            "httpConfig":
-            {
-                "port": 12776,
-                "host": "::"
-            },
-            "httpsConfig":
-            {
-                "port": 12777,
-                "host": "::",
-                "ssl_key_file": "ssl.key",
-                "ssl_cert_file": "ssl.crt"
-            },
-            "maxPayload":
-                1048576,
-            "apps": [
-                {
-                    "name": "Test",
-                    "path": "/",
-                    relay: true
-                },
-                {
-                    "name": "ChatApp",
-                    "path": "/chatapp"
-                },
-                {
-                    "name": "CallApp",
-                    "path": "/callapp"
-                },
-                {
-                    "name": "ConferenceApp",
-                    "path": "/conferenceapp",
-                    "address_sharing": true
-                },
-                {
-                    "name": "UnitTests",
-                    "path": "/test"
-                },
-                {
-                    "name": "UnitTestsAddressSharing",
-                    "path": "/testshared",
-                    "address_sharing": true
-                }
-            ]
-        }
         config.apps.forEach((app) => {
             if (app.relay) {
                 this.signalingServer.addPeerPool(app.path, new RelayController(app, soupServer));
             } else {
                 this.signalingServer.addPeerPool(app.path, new DefaultPeerPool(app));
             }
-
         })
 
 
