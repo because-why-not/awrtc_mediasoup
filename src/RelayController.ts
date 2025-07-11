@@ -15,7 +15,7 @@ import { IncomingPeerEndpoint, OutgoingPeerEndpoint } from "./PeerEndpoint";
  * 
  * 
  */
-abstract class DummyProtocol extends Protocol{
+abstract class DummyProtocol extends Protocol {
 
     private mIsDisposed = false;
 
@@ -26,10 +26,10 @@ abstract class DummyProtocol extends Protocol{
         if (evt.Type == NetEventType.ReliableMessageReceived) {
             //assuming we are connected to a regular peer sending 
             const incMessage = this.evtToString(evt);
-            console.log(this.GetLogPrefix()+"INC: ", incMessage);
+            console.log(this.GetLogPrefix() + "INC: ", incMessage);
 
             this.handleMessage(incMessage, evt.ConnectionId);
-        }else if(evt.Type == NetEventType.Disconnected){
+        } else if (evt.Type == NetEventType.Disconnected) {
             console.log(this.GetLogPrefix() + " disconnected from client side.");
             //we remove out dummy peer if our only connection gets cut
             this.triggerClosure();
@@ -37,8 +37,8 @@ abstract class DummyProtocol extends Protocol{
     }
 
     //Use this to close the protocol, related SignalingPeer and tell the Controller to clean up the peer
-    public triggerClosure(){
-        if(this.mIsDisposed)
+    public triggerClosure() {
+        if (this.mIsDisposed)
             return;
         //This tells the SignalingPeer the connection got closed. 
         // this triggers Disconnected events to be send to all other peers that might be connected
@@ -46,9 +46,9 @@ abstract class DummyProtocol extends Protocol{
         this.mListener.onNetworkClosed();
     }
 
-    protected forwardMessage(outMessage: string, id: ConnectionId){
+    protected forwardMessage(outMessage: string, id: ConnectionId) {
 
-        console.log(this.GetLogPrefix()+"OUT: ", outMessage);
+        console.log(this.GetLogPrefix() + "OUT: ", outMessage);
         const response = this.stringToEvt(outMessage, id);
         this.mListener.onNetworkEvent(response);
     }
@@ -86,9 +86,8 @@ abstract class DummyProtocol extends Protocol{
         return new NetworkEvent(NetEventType.ReliableMessageReceived, id, messageData);
     }
     abstract handleMessage(msg: string, id: ConnectionId): Promise<void>;
-    dispose(): void{
-        if(this.mIsDisposed == false)
-        {
+    dispose(): void {
+        if (this.mIsDisposed == false) {
             this.mIsDisposed = true;
             console.log(this.GetLogPrefix() + " disposed");
         }
@@ -164,7 +163,7 @@ class DummyOutProtocol extends DummyProtocol {
     constructor(public soupPeer: OutgoingPeerEndpoint, public soupServer: SoupServer) {
         super();
     }
-    async handleMessage(msg: string, id: ConnectionId): Promise<void>{
+    async handleMessage(msg: string, id: ConnectionId): Promise<void> {
         try {
             const json = JSON.parse(msg);
             if (typeof json === 'number') {
@@ -195,7 +194,7 @@ class DummyOutProtocol extends DummyProtocol {
                 'candidate' in json && 'sdpMLineIndex' in json && 'sdpMid' in json) {
                 //We currently ignore candidates the client offers. The server's sdp contains the only valid
                 //ice candidates
-                    
+
             } else {
                 // If none of the above, it's an unknown message type
                 console.warn('Unknown message type received:', json);
@@ -211,7 +210,7 @@ class DummyOutProtocol extends DummyProtocol {
         return "DummyOut"
     }
 
-    public async triggerConnectionRequest(address: string) : Promise<void> {
+    public async triggerConnectionRequest(address: string): Promise<void> {
 
         const id = new ConnectionId(17000);
         this.mListener.onNetworkEvent(new NetworkEvent(NetEventType.NewConnection, id, address));
@@ -230,7 +229,7 @@ interface AddressReceiversDict {
     [key: string]: Receiver[];
 };
 
-class Sender{
+class Sender {
     //WebRTC / Mediasoup specific peer
     public soupPeer: IncomingPeerEndpoint;
 
@@ -240,7 +239,7 @@ class Sender{
     public protocol: DummyInProtocol;
 }
 
-class Receiver{
+class Receiver {
     public soupPeer: OutgoingPeerEndpoint;
     public dummyPeer: SignalingPeer;
 
@@ -274,11 +273,11 @@ export class RelayController extends PeerPool {
         this.mSoupServer = soupServer;
     }
 
-    private addSender(address:string, dummyPeer: SignalingPeer, dummyProtocol: DummyInProtocol, soupPeer: IncomingPeerEndpoint){
+    private addSender(address: string, dummyPeer: SignalingPeer, dummyProtocol: DummyInProtocol, soupPeer: IncomingPeerEndpoint) {
 
         const sender = new Sender();
         sender.dummyPeer = dummyPeer;
-        sender.protocol  = dummyProtocol
+        sender.protocol = dummyProtocol
         sender.soupPeer = soupPeer;
 
         this.mSenders[address] = sender;
@@ -286,7 +285,7 @@ export class RelayController extends PeerPool {
         this.mConnections.push(dummyPeer);
 
 
-        
+
         sender.soupPeer.transport.on('dtlsstatechange', (dtlsState) => {
             console.log("Sender dtlsstatechange", dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
@@ -296,17 +295,16 @@ export class RelayController extends PeerPool {
         });
     }
 
-    private removeSender(address: string, sender: Sender){
+    private removeSender(address: string, sender: Sender) {
         //make sure everything is closed if not yet done
         sender.soupPeer.transport.close();
-        sender.soupPeer.consumerPeers.forEach((x)=>{
+        sender.soupPeer.consumerPeers.forEach((x) => {
             console.log("Closing receiver's consumer because sender stopped.");
             x.transport.close();
         });
         sender.protocol.triggerClosure();
 
-        if(!this.mSenders[address])
-        {
+        if (!this.mSenders[address]) {
             console.warn("Tried to cleanup sender  " + sender.protocol.GetLogPrefix() + " address " + address + " but no sender found.");
             return;
         }
@@ -315,8 +313,8 @@ export class RelayController extends PeerPool {
         //Workaround: It appears dtlsstatechange never triggers if we manually close receiver's transport
         //-> force remove receivers otherwise we leak memory
         const receivers = this.mReceivers[address];
-        receivers.forEach(receiver=>this.removeReceiver(address, receiver));
-        
+        receivers.forEach(receiver => this.removeReceiver(address, receiver));
+
 
         //if there are no receivers cleanup the empty list
         //otherwise the receivers get their own events later and then cleanup
@@ -327,38 +325,37 @@ export class RelayController extends PeerPool {
         //}
     }
 
-    private removeReceiver(address: string, receiver: Receiver){
+    private removeReceiver(address: string, receiver: Receiver) {
 
         //make sure everything is closed if not yet done
         receiver.soupPeer.transport.close();
         receiver.protocol.triggerClosure();
 
         //remove from receiver list
-        if(!this.mReceivers[address])
-        {
+        if (!this.mReceivers[address]) {
             console.warn("Tried to cleanup receiver  " + receiver.protocol.GetLogPrefix() + " address " + address + " but no receiver found.");
             return;
         }
 
         this.mReceivers[address] = this.mReceivers[address].filter(item => item !== receiver);
-        if(this.mReceivers[address].length === 0 && !this.mSenders[address]){
+        if (this.mReceivers[address].length === 0 && !this.mSenders[address]) {
             console.log("No receivers left for " + address + ". Cleaning up receiver list");
             delete this.mReceivers[address];
         }
     }
 
-    private addReceiver(address:string, dummyPeer: SignalingPeer, dummyProtocol: DummyOutProtocol, soupPeer: OutgoingPeerEndpoint){
+    private addReceiver(address: string, dummyPeer: SignalingPeer, dummyProtocol: DummyOutProtocol, soupPeer: OutgoingPeerEndpoint) {
 
         const receiver = new Receiver();
         receiver.dummyPeer = dummyPeer;
-        receiver.protocol  = dummyProtocol
+        receiver.protocol = dummyProtocol
         receiver.soupPeer = soupPeer;
 
         this.mReceivers[address].push(receiver);
         this.mConnections.push(dummyPeer);
 
 
-        
+
         receiver.soupPeer.transport.on('dtlsstatechange', (dtlsState) => {
             console.log("Receiver dtlsstatechange", dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
@@ -378,7 +375,7 @@ export class RelayController extends PeerPool {
         //data will flow: server side logic -> DummyProtocol -> outgoingSignalingPeer -> incomingSignalingPeer -> websocket -> client
         const dummyProtocol = new DummyInProtocol(soupPeer, this.mSoupServer);
         const dummyPeer = new SignalingPeer(this, dummyProtocol);
-        
+
 
 
         this.addSender(address, dummyPeer, dummyProtocol, soupPeer);
@@ -387,16 +384,30 @@ export class RelayController extends PeerPool {
         dummyProtocol.triggerConnectionRequest(address);
     }
 
+    public hasSender(receiverOrSenderAddress: string): boolean {
+        let senderAddress = RelayController.toSenderAddress(receiverOrSenderAddress);
+        if (this.mSenders[senderAddress]) {
+            return true;
+        }
+        return false;
+    }
+
+    public static toSenderAddress(receiverOrSenderAddress: string) {
+
+        let senderAddress = receiverOrSenderAddress.substring(0, receiverOrSenderAddress.length - 4);
+        senderAddress = senderAddress + "_snd";
+        return senderAddress;
+    }
+
     public async createNewOutgoingRelay(address: string, clientPeer: SignalingPeer) {
         //create incoming peer
-        let senderAddress = address.substring(0, address.length - 4);
-        senderAddress = senderAddress + "_snd";
+        let senderAddress = RelayController.toSenderAddress(address);
         console.log("creating outgoing peer for " + senderAddress);
 
         //get the peer that receives the stream
         const sender = this.mSenders[senderAddress];
 
-        //create the peer that sends the stream out
+        //create the peer that sends the stream out to the client
         const soupPeer = await this.mSoupServer.createOutgoingPeer(sender.soupPeer);
         const dummyProtocol = new DummyOutProtocol(soupPeer, this.mSoupServer);
         const dummyPeer = new SignalingPeer(this, dummyProtocol);
@@ -409,23 +420,50 @@ export class RelayController extends PeerPool {
     }
 
     public onListeningRequest(peer: SignalingPeer, address: string): void {
-        if (this.isAddressAvailable(address)) {
 
-            console.log("RELAY: New address " + address);
+        if (address.endsWith("_snd")) {
+            if (this.hasSender(address) == false) {
+                console.log("New sender address " + address);
 
+                //add as listener on the address_snd
+                this.addListener(peer, address);
+                //tell the client they successfully listening on the address
+                peer.acceptListening(address);
+                //create peer connection
+                this.createNewIncomingRelay(address, peer);
+            } else {
+                console.log("New sender denied. Address in use.");
+                //for simplicity we block any receivers if no sender is available
+                //in the future receivers could wait for senders to arrive
+                peer.denyListening(address);
+            }
+        } else if (address.endsWith("_rec")) {
+            //user attempts to listen from a mediasoup sender
+
+            if (this.hasSender(address)) {
+                console.log("New receiver on address " + address);
+                this.addListener(peer, address);
+                peer.acceptListening(address);
+                this.createNewOutgoingRelay(address, peer);
+            } else {
+
+                console.log("New receiver denied. No sender available");
+                //for simplicity we block any receivers if no sender is available
+                //in the future receivers could wait for senders to arrive
+                peer.denyListening(address);
+            }
+        } else if (this.isAddressAvailable(address)) {
+
+            //default behaviour of awrtc_signaling. User simply listens on an address
+            //waiting for another to connect
             this.addListener(peer, address);
             peer.acceptListening(address);
-            if (address.endsWith("_snd")) {
-                this.createNewIncomingRelay(address, peer);
-            } else if (address.endsWith("_rec")) {
-                this.createNewOutgoingRelay(address, peer);
-            }
-
             if (this.hasAddressSharing()) {
                 //address sharing is active. connect to every endpoint already listening on this address
                 this.acceptJoin(address, peer);
             }
         } else {
+            //normal awrtc_signaling behaviour -> address is already used by another user and not in sharem ode
             peer.denyListening(address);
         }
     }
@@ -498,8 +536,8 @@ export class RelayController extends PeerPool {
         this.logStatus();
     }
 
-    public logStatus(){
-        WebsocketNetworkServer.logv( this.count()
+    public logStatus() {
+        WebsocketNetworkServer.logv(this.count()
             + " connections left in pool ");
     }
 }
