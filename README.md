@@ -1,3 +1,12 @@
+# Introduction
+
+This project connects awrtc-based apps (WebRTC Video Chat for Unity or awrtc for browser/Python) with a mediasoup server.
+
+With the default configuration it can receive a video stream from one client and forwards it to multiple receivers, reducing load on the sender.
+
+To use the server, replace your existing awrtc_signaling server with this one and use a URL ending in /relay.
+Add _snd or _rec to the address to enable sending or receiving. For all other addresses, the server behaves like awrtc_signaling.
+
 # Requirements:
 * npm and nodejs (last tested version v20.19.2)
 
