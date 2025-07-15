@@ -3,11 +3,13 @@ import https from "https";
 import fs from "fs";
 import ws from "ws";
 
-import { WebsocketNetworkServer, DefaultPeerPool, ServerConfig } from "awrtc_signaling"
+import { WebsocketNetworkServer, DefaultPeerPool, SLogger } from "awrtc_signaling"
 import { RelayController } from "./RelayController";
 import { SoupServer } from "./SoupServer";
 import { RelayServerConfig } from "./RelayServerConfig";
 
+
+const logger = new SLogger("sig");
 //This server works similar to the default setup of awrtc_signaling but
 //adds our relay functionality if an app has set relay to true. 
 export class SoupSignalingServer {
@@ -15,7 +17,7 @@ export class SoupSignalingServer {
     signalingServer: WebsocketNetworkServer;
 
     constructor() {
-        this.signalingServer = new WebsocketNetworkServer();
+        this.signalingServer = new WebsocketNetworkServer(logger);
     }
 
     public async init(config: RelayServerConfig) {
@@ -24,11 +26,12 @@ export class SoupSignalingServer {
 
         config.apps.forEach((app) => {
             if (app.relay) {
-                this.signalingServer.addPeerPool(app.path, new RelayController(app, soupServer));
+                this.signalingServer.addPeerPool(app.path, new RelayController(app, soupServer, logger.createSub(app.path)));
             } else {
-                this.signalingServer.addPeerPool(app.path, new DefaultPeerPool(app));
+                this.signalingServer.addPeerPool(app.path, new DefaultPeerPool(app, logger.createSub(app.path)));
             }
         })
+        
 
 
 

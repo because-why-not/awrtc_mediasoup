@@ -1,4 +1,4 @@
-import { PeerPool, SignalingPeer, WebsocketNetworkServer, AppConfig, ConnectionId, NetEventType, NetworkEvent, Protocol } from "awrtc_signaling";
+import { PeerPool, SignalingPeer, WebsocketNetworkServer, AppConfig, ConnectionId, NetEventType, NetworkEvent, Protocol, ILogger } from "awrtc_signaling";
 import { SoupServer } from "./SoupServer";
 import { IncomingPeerEndpoint, OutgoingPeerEndpoint } from "./PeerEndpoint";
 
@@ -19,6 +19,13 @@ abstract class DummyProtocol extends Protocol {
 
     private mIsDisposed = false;
 
+    protected mLog: ILogger;
+
+    constructor(logger: ILogger){
+        super();
+        this.mLog = logger;
+    }
+
     //Send is called when the client tries to send a message to us
     public send(evt: NetworkEvent) {
         //console.log("dummy received", evt);
@@ -26,11 +33,11 @@ abstract class DummyProtocol extends Protocol {
         if (evt.Type == NetEventType.ReliableMessageReceived) {
             //assuming we are connected to a regular peer sending 
             const incMessage = this.evtToString(evt);
-            console.log(this.GetLogPrefix() + "INC: ", incMessage);
+            console.log(this.getIdentity() + "INC: ", incMessage);
 
             this.handleMessage(incMessage, evt.ConnectionId);
         } else if (evt.Type == NetEventType.Disconnected) {
-            console.log(this.GetLogPrefix() + " disconnected from client side.");
+            console.log(this.getIdentity() + " disconnected from client side.");
             //we remove out dummy peer if our only connection gets cut
             this.triggerClosure();
         }
@@ -48,7 +55,7 @@ abstract class DummyProtocol extends Protocol {
 
     protected forwardMessage(outMessage: string, id: ConnectionId) {
 
-        console.log(this.GetLogPrefix() + "OUT: ", outMessage);
+        console.log(this.getIdentity() + "OUT: ", outMessage);
         const response = this.stringToEvt(outMessage, id);
         this.mListener.onNetworkEvent(response);
     }
@@ -89,7 +96,7 @@ abstract class DummyProtocol extends Protocol {
     dispose(): void {
         if (this.mIsDisposed == false) {
             this.mIsDisposed = true;
-            console.log(this.GetLogPrefix() + " disposed");
+            console.log(this.getIdentity() + " disposed");
         }
     }
 }
@@ -100,8 +107,8 @@ class DummyInProtocol extends DummyProtocol {
     //send is triggered by the clients own peer. Meaning
     //these are the messages we receive 
 
-    constructor(public soupPeer: IncomingPeerEndpoint, public soupServer: SoupServer) {
-        super();
+    constructor(public soupPeer: IncomingPeerEndpoint, public soupServer: SoupServer, logger:ILogger) {
+        super(logger);
     }
     async handleMessage(msg: string, id: ConnectionId) {
         try {
@@ -143,7 +150,7 @@ class DummyInProtocol extends DummyProtocol {
             console.error('Original message:', msg);
         }
     }
-    GetLogPrefix(): string {
+    getIdentity(): string {
         return "DummyIn"
     }
 
@@ -160,8 +167,8 @@ class DummyOutProtocol extends DummyProtocol {
     //send is triggered by the clients own peer. Meaning
     //these are the messages we receive 
 
-    constructor(public soupPeer: OutgoingPeerEndpoint, public soupServer: SoupServer) {
-        super();
+    constructor(public soupPeer: OutgoingPeerEndpoint, public soupServer: SoupServer, logger: ILogger) {
+        super(logger);
     }
     async handleMessage(msg: string, id: ConnectionId): Promise<void> {
         try {
@@ -206,7 +213,7 @@ class DummyOutProtocol extends DummyProtocol {
             console.error('Original message:', msg);
         }
     }
-    GetLogPrefix(): string {
+    getIdentity(): string {
         return "DummyOut"
     }
 
@@ -264,8 +271,8 @@ export class RelayController extends PeerPool {
 
 
 
-    constructor(config: AppConfig, soupServer: SoupServer) {
-        super();
+    constructor(config: AppConfig, soupServer: SoupServer, logger: ILogger) {
+        super(logger);
         this.mAppConfig = config;
         if (this.mAppConfig.address_sharing) {
             this.mAddressSharing = this.mAppConfig.address_sharing;
@@ -305,7 +312,7 @@ export class RelayController extends PeerPool {
         sender.protocol.triggerClosure();
 
         if (!this.mSenders[address]) {
-            console.warn("Tried to cleanup sender  " + sender.protocol.GetLogPrefix() + " address " + address + " but no sender found.");
+            console.warn("Tried to cleanup sender  " + sender.protocol.getIdentity() + " address " + address + " but no sender found.");
             return;
         }
         delete this.mSenders[address];
@@ -333,7 +340,7 @@ export class RelayController extends PeerPool {
 
         //remove from receiver list
         if (!this.mReceivers[address]) {
-            console.warn("Tried to cleanup receiver  " + receiver.protocol.GetLogPrefix() + " address " + address + " but no receiver found.");
+            console.warn("Tried to cleanup receiver  " + receiver.protocol.getIdentity() + " address " + address + " but no receiver found.");
             return;
         }
 
@@ -373,8 +380,12 @@ export class RelayController extends PeerPool {
         //create a new SignalingPeer to connect to the incomingSignalingPeer
         //instead of events coming from websockets we feed the events into it via DummyProtocol
         //data will flow: server side logic -> DummyProtocol -> outgoingSignalingPeer -> incomingSignalingPeer -> websocket -> client
-        const dummyProtocol = new DummyInProtocol(soupPeer, this.mSoupServer);
-        const dummyPeer = new SignalingPeer(this, dummyProtocol);
+
+
+        const peerName = "DUMMYIN"+incomingSignalingPeer.getIdentity();
+        const peerLogger = this.mLog.createSub(peerName);
+        const dummyProtocol = new DummyInProtocol(soupPeer, this.mSoupServer, peerLogger);
+        const dummyPeer = new SignalingPeer(this, dummyProtocol, peerLogger);
 
 
 
@@ -409,8 +420,11 @@ export class RelayController extends PeerPool {
 
         //create the peer that sends the stream out to the client
         const soupPeer = await this.mSoupServer.createOutgoingPeer(sender.soupPeer);
-        const dummyProtocol = new DummyOutProtocol(soupPeer, this.mSoupServer);
-        const dummyPeer = new SignalingPeer(this, dummyProtocol);
+
+        const peerName = "DUMMYOUT" + clientPeer.getIdentity();
+        const peerLogger = this.mLog.createSub(peerName);
+        const dummyProtocol = new DummyOutProtocol(soupPeer, this.mSoupServer, peerLogger);
+        const dummyPeer = new SignalingPeer(this, dummyProtocol, peerLogger);
         this.addReceiver(senderAddress, dummyPeer, dummyProtocol, soupPeer);
 
         //send large number to force the other side into answer mode
@@ -532,12 +546,12 @@ export class RelayController extends PeerPool {
 
     public onCleanup(client: SignalingPeer): void {
         this.removeConnection(client);
-        WebsocketNetworkServer.logv(client.GetLogPrefix() + "removed");
+        this.mLog.logv(client.getIdentity() + "removed");
         this.logStatus();
     }
 
     public logStatus() {
-        WebsocketNetworkServer.logv(this.count()
+        this.mLog.logv(this.count()
             + " connections left in pool ");
     }
 }
