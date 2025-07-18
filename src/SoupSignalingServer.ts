@@ -45,7 +45,7 @@ export class SoupSignalingServer {
         //request handler that will deliver files from public directory
         //can be used like a simple http / https webserver
         //also needed for let's encrypt to get a free SSL certificate
-        var serve = serveStatic("./public");
+        var serve = serveStatic("./public", {dotfiles: "allow"});
 
 
         function defaultRequest(req: http.IncomingMessage, res: http.ServerResponse) {
