@@ -45,7 +45,7 @@ export class SoupSignalingServer {
         //request handler that will deliver files from public directory
         //can be used like a simple http / https webserver
         //also needed for let's encrypt to get a free SSL certificate
-        var serve = serveStatic("./public", {dotfiles: "allow"});
+        const serve = serveStatic("./public", {dotfiles: "allow"});
 
 
         function defaultRequest(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -56,7 +56,7 @@ export class SoupSignalingServer {
                 tokenManager.processRequest(req, res);
             } else {
                 //res.setHeader("Access-Control-Allow-Origin", "*"); //allow access from anywhere
-                var done = finalhandler(req, res);
+                const done = finalhandler(req, res);
                 serve(req, res, done);
             }
         }
@@ -71,7 +71,7 @@ export class SoupSignalingServer {
             console.log("listening on ", httpServer.address());
         });
 
-        var webSocketServer = new ws.Server(
+        const webSocketServer = new ws.Server(
             {
                 server: httpServer,
                 //path: app.path,
@@ -99,7 +99,7 @@ export class SoupSignalingServer {
                 console.log("secure websockets/https listening on ", httpsServer.address());
             });
 
-            var webSocketSecure = new ws.Server({
+            const webSocketSecure = new ws.Server({
                 server: httpsServer,
                 //path: app.path,
                 maxPayload: config.maxPayload,
