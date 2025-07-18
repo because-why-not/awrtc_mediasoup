@@ -23,11 +23,47 @@ From bash / cmd:
 # Configuration
 
 Edit the file config.json:
-* Replace the IP after "ip": with your own.
-  * If you test this within your own LAN/ WiFi this should be a local IP address
-  * If you use this on a server online make sure to use the public IP address and open all used ports are open
+* Update the "ip" field and set the "announcedIp" field if needed
+  * If you test this within your own LAN/ WiFi: ip should be the LOCAL IP to listen on
+  * If you use this on a server online with a public IP directly associated with the server: ip should be the PUBLIC IP to listen on
+  * If you use this on a server online and behind a NAT: ip should be the LOCAL IP to listen on. Add another field "announcedIp" with the public IP or domain name you want the clients to connect to.
+  * Note the server needs to know an exact IP address or domain for signaling. Just using 0.0.0.0 or :: is not possible.
 * Update the ports under listenInfos (mediasoup WebRTC), httpConfig (signaling via ws) and httpsConfig (signaling via wss) to suit your needs
+  * If behind a NAT or firewall remember to open the ports
+  * if using port 80 and 443 on linux or mac make sure your user is allowed to access them
 * For secure websockets to work properly update ssl_key_file / ssl_cert_file to your own domain name specific certificate
+
+listenInfos example for local IP:
+
+    "listenInfos": [
+        {
+            "protocol": "udp",
+            "ip": "192.168.1.46",
+            "port": 20000
+        },
+        {
+            "protocol": "tcp",
+            "ip": "192.168.1.46",
+            "port": 20000
+        }
+    ]
+
+listenInfos example for local IP + public IP behind a NAT:
+
+    "listenInfos": [
+        {
+            "protocol": "udp",
+            "ip": "192.168.1.46",
+            "announcedIp": "201.20.1.13",
+            "port": 20000
+        },
+        {
+            "protocol": "tcp",
+            "ip": "192.168.1.46",
+            "announcedIp": "201.20.1.13",
+            "port": 20000
+        }
+    ]
 
 
 # Run

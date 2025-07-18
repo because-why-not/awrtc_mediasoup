@@ -13,11 +13,11 @@
     ],
     "log_verbose": true,
     "httpConfig": {
-        "port": 12776,
+        "port": 80,
         "host": "::"
     },
     "httpsConfig": {
-        "port": 12777,
+        "port": 443,
         "host": "::",
         "ssl_key_file": "ssl.key",
         "ssl_cert_file": "ssl.crt"
