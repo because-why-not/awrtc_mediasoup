@@ -297,11 +297,25 @@ export class RelayController extends PeerPool {
             console.log("Sender dtlsstatechange", dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
                 //clean up
+                //TODO: Check if this needs special handling. The sender might still be connected via signaling
+                //and listening on the address but the peer connection failed for unrelated reasons
                 this.removeSender(address, sender);
             }
         });
     }
 
+    override removeServer(client: SignalingPeer, address: string): void {
+        super.removeServer(client, address);
+        const senderInfo = this.mSenders[address];
+        if(senderInfo){
+            //If the client releases the address or disconnects signaling before mediasoup has a chance to connect
+            //we never get a dtlsState failed event -> Cleanup mediasoup senders here when the client side address is freed
+            //Note this currently relies on client application side behaviour. 
+            this.removeSender(address, senderInfo);
+        }
+    }
+
+    //TODO: Remove sender argument. Replace with this.mSenders[address]
     private removeSender(address: string, sender: Sender) {
         //make sure everything is closed if not yet done
         sender.soupPeer.transport.close();
