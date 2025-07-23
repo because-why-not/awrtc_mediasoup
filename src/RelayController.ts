@@ -21,7 +21,7 @@ abstract class DummyProtocol extends Protocol {
 
     protected mLog: ILogger;
 
-    constructor(logger: ILogger){
+    constructor(logger: ILogger) {
         super();
         this.mLog = logger;
     }
@@ -107,7 +107,7 @@ class DummyInProtocol extends DummyProtocol {
     //send is triggered by the clients own peer. Meaning
     //these are the messages we receive 
 
-    constructor(public soupPeer: IncomingPeerEndpoint, public soupServer: SoupServer, logger:ILogger) {
+    constructor(public soupPeer: IncomingPeerEndpoint, public soupServer: SoupServer, logger: ILogger) {
         super(logger);
     }
     async handleMessage(msg: string, id: ConnectionId) {
@@ -305,13 +305,24 @@ export class RelayController extends PeerPool {
     }
 
     override removeServer(client: SignalingPeer, address: string): void {
+        //this removes it from the address list (list shared with peer to peer)
         super.removeServer(client, address);
+        //if the user was a sender -> also remove it from our sender list
         const senderInfo = this.mSenders[address];
-        if(senderInfo){
-            //If the client releases the address or disconnects signaling before mediasoup has a chance to connect
-            //we never get a dtlsState failed event -> Cleanup mediasoup senders here when the client side address is freed
-            //Note this currently relies on client application side behaviour. 
-            this.removeSender(address, senderInfo);
+        if (senderInfo) {
+            if (senderInfo.soupPeer.transport.dtlsState == "connected") {
+                //clients with KeepSignalingAlive == false and IsConference == false will trigger this situation. They end signaling
+                //connections once fully connected. This is normal. The sender is cleaned once mediasoup connection ends
+                console.log(`Address ${address} was freed but an active sender remains.`);
+            } else {
+                //If the client releases the address or disconnects signaling before mediasoup has a chance to connect
+                //we never get a dtlsState failed event -> Cleanup mediasoup senders here when the client side address is freed
+                //Note this currently relies on client application side behaviour. 
+                //This is usually triggered due to an error e.g. the client failed to connect to mediasoup. 
+                //Also happens if the user simply quits after clicking connect and before the connection succeeds.
+                console.warn(`Removing sender ${address} because the address was freed before mediasoup connected`);
+                this.removeSender(address, senderInfo);
+            }
         }
     }
 
@@ -337,6 +348,7 @@ export class RelayController extends PeerPool {
         receivers.forEach(receiver => this.removeReceiver(address, receiver));
 
 
+        console.log(`Sender for for ${address} removed.`);
         //if there are no receivers cleanup the empty list
         //otherwise the receivers get their own events later and then cleanup
         //removed for now because we force all receivers to be removed above because dtlsstatechange doesn't trigger when we call .close
@@ -396,7 +408,7 @@ export class RelayController extends PeerPool {
         //data will flow: server side logic -> DummyProtocol -> outgoingSignalingPeer -> incomingSignalingPeer -> websocket -> client
 
 
-        const peerName = "DUMMYIN"+incomingSignalingPeer.getIdentity();
+        const peerName = "DUMMYIN" + incomingSignalingPeer.getIdentity();
         const peerLogger = this.mLog.createSub(peerName);
         const dummyProtocol = new DummyInProtocol(soupPeer, this.mSoupServer, peerLogger);
         const dummyPeer = new SignalingPeer(this, dummyProtocol, peerLogger);
@@ -517,6 +529,7 @@ export class RelayController extends PeerPool {
 
     public onStopListening(client: SignalingPeer, address: string): void {
 
+        //client frees up address. -> remove it from our list
         this.removeServer(client, address);
     }
 
