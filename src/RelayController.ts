@@ -1,6 +1,7 @@
 import { PeerPool, SignalingPeer, WebsocketNetworkServer, AppConfig, ConnectionId, NetEventType, NetworkEvent, Protocol, ILogger } from "awrtc_signaling";
 import { SoupServer } from "./SoupServer";
 import { IncomingPeerEndpoint, OutgoingPeerEndpoint } from "./PeerEndpoint";
+import { ISignalingPeer } from "awrtc_signaling/out/SignalingPeer";
 
 
 
@@ -304,9 +305,9 @@ export class RelayController extends PeerPool {
         });
     }
 
-    override removeServer(client: SignalingPeer, address: string): void {
+    override removeListener(client: ISignalingPeer, address: string): void {
         //this removes it from the address list (list shared with peer to peer)
-        super.removeServer(client, address);
+        super.removeListener(client, address);
         //if the user was a sender -> also remove it from our sender list
         const senderInfo = this.mSenders[address];
         if (senderInfo) {
@@ -398,7 +399,7 @@ export class RelayController extends PeerPool {
     }
 
 
-    public async createNewIncomingRelay(address: string, incomingSignalingPeer: SignalingPeer) {
+    public async createNewIncomingRelay(address: string, incomingSignalingPeer: ISignalingPeer) {
         console.log("crreating incoming peer for " + address);
         //create incoming peer
         let soupPeer = await this.mSoupServer.createIncomingPeer();
@@ -436,7 +437,7 @@ export class RelayController extends PeerPool {
         return senderAddress;
     }
 
-    public async createNewOutgoingRelay(address: string, clientPeer: SignalingPeer) {
+    public async createNewOutgoingRelay(address: string, clientPeer: ISignalingPeer) {
         //create incoming peer
         let senderAddress = RelayController.toSenderAddress(address);
         console.log("creating outgoing peer for " + senderAddress);
@@ -459,7 +460,7 @@ export class RelayController extends PeerPool {
         //create offer
     }
 
-    public onListeningRequest(peer: SignalingPeer, address: string): void {
+    public onListeningRequest(peer: ISignalingPeer, address: string): void {
 
         if (address.endsWith("_snd")) {
             if (this.hasSender(address) == false) {
@@ -510,9 +511,9 @@ export class RelayController extends PeerPool {
 
     //If multiple users listen on the same address we all connect them to each other
     //(hasAddressSharing flag is true)
-    public acceptJoin(address: string, client: SignalingPeer): void {
+    public acceptJoin(address: string, client: ISignalingPeer): void {
 
-        var serverConnections = this.getServerConnection(address);
+        var serverConnections = this.getListenerPeers(address);
 
         //in join mode every connection is incoming as everyone listens together
         if (serverConnections != null) {
@@ -527,20 +528,20 @@ export class RelayController extends PeerPool {
         }
     }
 
-    public onStopListening(client: SignalingPeer, address: string): void {
+    public onStopListening(client: ISignalingPeer, address: string): void {
 
         //client frees up address. -> remove it from our list
-        this.removeServer(client, address);
+        this.removeListener(client, address);
     }
 
 
-    public onConnectionRequest(client: SignalingPeer, address: string, newConnectionId: ConnectionId): void {
+    public onConnectionRequest(client: ISignalingPeer, address: string, newConnectionId: ConnectionId): void {
 
         //all peers listening to address
         //if this contains 0 peers -> connection fails because no one is listening
         //If this contains 1 peer -> connect to that peer
         //TODO: if it contains multiple peers -> trigger an error as connect can only be used for 1-to-1
-        var serverConnections = this.getServerConnection(address);
+        var serverConnections = this.getListenerPeers(address);
         if (serverConnections != null && serverConnections.length == 1) {
 
             const otherPeer = serverConnections[0];
@@ -565,13 +566,13 @@ export class RelayController extends PeerPool {
     //the address is longer than the maxAddressLength and the server the address is not yet in use or address sharing is active
     public isAddressAvailable(address: string): boolean {
         if (address.length <= this.maxAddressLength // only allow addresses shorter than maxAddressLength
-            && (this.mServers[address] == null || this.mAddressSharing)) {
+            && (this.mListeners[address] == null || this.mAddressSharing)) {
             return true;
         }
         return false;
     }
 
-    public onCleanup(client: SignalingPeer): void {
+    public onCleanup(client: ISignalingPeer): void {
         this.removeConnection(client);
         this.mLog.logv(client.getIdentity() + "removed");
         this.logStatus();
