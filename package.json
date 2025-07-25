@@ -5,17 +5,19 @@
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node dist/server.js",
     "build": "tsc",
-    "dev": "ts-node-dev --respawn src/server.ts",
-    "postinstall": "patch-package"
+    "watch": "tsx watch src/server.ts",
+    "postinstall": "patch-package",
+    "lint": "eslint",
+    "test": "vitest",
+    "format": "prettier --write \"src/**/*.{ts,js}\" \"tests/**/*.{ts,js}\""
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@types/lodash": "^4.17.17",
-    "awrtc_signaling": "github:because-why-not/awrtc_signaling#3b30a5c3056bfeb43832bc817cd4f425652a12a0",
+    "awrtc_signaling": "github:because-why-not/awrtc_signaling#6c0a10dc8c93349259c57f71b9541b7254449f90",
     "express": "^5.1.0",
     "lodash": "^4.17.21",
     "mediasoup": "^3.16.5",
@@ -25,11 +27,16 @@
     "ws": "^8.18.2"
   },
   "devDependencies": {
+    "@eslint/js": "^9.31.0",
     "@tsconfig/node20": "^20.1.5",
     "@types/express": "^5.0.3",
     "@types/node": "^22.15.30",
+    "eslint": "^9.31.0",
     "patch-package": "^8.0.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.8.3"
+    "prettier": "^3.6.2",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0",
+    "vitest": "^3.2.4"
   }
 }
