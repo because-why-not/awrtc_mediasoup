@@ -35,7 +35,7 @@ export class SoupSignalingServer {
             }
         })
 
-        let tokenManager = new TokenManager(config.adminToken, config.log_verbose);
+        const tokenManager = new TokenManager(config.adminToken, config.log_verbose);
         if (tokenManager.isActive()) {
             logger.log("Admin token set in config.json. Connections will be blocked by default unless a valid user token is used.");
         } else {
@@ -50,7 +50,7 @@ export class SoupSignalingServer {
 
         function defaultRequest(req: http.IncomingMessage, res: http.ServerResponse) {
             logger.log(`Request received from IP: ${req.socket.remoteAddress}:${req.socket.remotePort} to url ${req.url}`);
-            const parsedUrl = url.parse(req.url!, true);
+            const parsedUrl = url.parse(req.url, true);
             const pathname = parsedUrl.pathname;
             if (pathname === '/api/admin/regUserToken') {
                 tokenManager.processRequest(req, res);
@@ -62,8 +62,8 @@ export class SoupSignalingServer {
         }
 
 
-        let httpServer = http.createServer(defaultRequest);
-        let options = {
+        const httpServer = http.createServer(defaultRequest);
+        const options = {
             port: config.httpConfig.port,
             host: config.httpConfig.host
         }
@@ -86,12 +86,12 @@ export class SoupSignalingServer {
         if (config.httpsConfig) {
             //load SSL files. If this crashes check the congig.json and make sure the files
             //are at the correct location
-            let httpsServer = https.createServer({
+            const httpsServer = https.createServer({
                 key: fs.readFileSync(config.httpsConfig.ssl_key_file),
                 cert: fs.readFileSync(config.httpsConfig.ssl_cert_file)
             }, defaultRequest);
 
-            let options = {
+            const options = {
                 port: config.httpsConfig.port,
                 host: config.httpsConfig.host
             }

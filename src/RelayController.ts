@@ -69,9 +69,9 @@ abstract class DummyProtocol extends Protocol {
         }
         let output = "";
         if (evt.MessageData != null) {
-            let chars = new Uint16Array(evt.MessageData.buffer, evt.MessageData.byteOffset, evt.MessageData.byteLength / 2);
+            const chars = new Uint16Array(evt.MessageData.buffer, evt.MessageData.byteOffset, evt.MessageData.byteLength / 2);
 
-            for (var i = 0; i < chars.length; i++) {
+            for (let i = 0; i < chars.length; i++) {
                 output += String.fromCharCode(chars[i]);
             }
         }
@@ -244,13 +244,13 @@ class Sender {
     //signaling peer that connects us to the client side peer
     public dummyPeer: SignalingPeer;
 
+    //protocol to send/receive messages via the SignalingPeer
     public protocol: DummyInProtocol;
 }
 
 class Receiver {
     public soupPeer: OutgoingPeerEndpoint;
     public dummyPeer: SignalingPeer;
-
     public protocol: DummyOutProtocol;
 }
 
@@ -402,7 +402,7 @@ export class RelayController extends PeerPool {
     public async createNewIncomingRelay(address: string, incomingSignalingPeer: ISignalingPeer) {
         console.log("crreating incoming peer for " + address);
         //create incoming peer
-        let soupPeer = await this.mSoupServer.createIncomingPeer();
+        const soupPeer = await this.mSoupServer.createIncomingPeer();
 
         //create a new SignalingPeer to connect to the incomingSignalingPeer
         //instead of events coming from websockets we feed the events into it via DummyProtocol
@@ -423,7 +423,7 @@ export class RelayController extends PeerPool {
     }
 
     public hasSender(receiverOrSenderAddress: string): boolean {
-        let senderAddress = RelayController.toSenderAddress(receiverOrSenderAddress);
+        const senderAddress = RelayController.toSenderAddress(receiverOrSenderAddress);
         if (this.mSenders[senderAddress]) {
             return true;
         }
@@ -439,7 +439,7 @@ export class RelayController extends PeerPool {
 
     public async createNewOutgoingRelay(address: string, clientPeer: ISignalingPeer) {
         //create incoming peer
-        let senderAddress = RelayController.toSenderAddress(address);
+        const senderAddress = RelayController.toSenderAddress(address);
         console.log("creating outgoing peer for " + senderAddress);
 
         //get the peer that receives the stream
@@ -513,12 +513,12 @@ export class RelayController extends PeerPool {
     //(hasAddressSharing flag is true)
     public acceptJoin(address: string, client: ISignalingPeer): void {
 
-        var serverConnections = this.getListenerPeers(address);
+        const serverConnections = this.getListenerPeers(address);
 
         //in join mode every connection is incoming as everyone listens together
         if (serverConnections != null) {
 
-            for (var v of serverConnections) {
+            for (const v of serverConnections) {
                 //avoid connecting the peer to itself
                 if (v != client) {
                     v.acceptIncomingConnection(client);
@@ -541,7 +541,7 @@ export class RelayController extends PeerPool {
         //if this contains 0 peers -> connection fails because no one is listening
         //If this contains 1 peer -> connect to that peer
         //TODO: if it contains multiple peers -> trigger an error as connect can only be used for 1-to-1
-        var serverConnections = this.getListenerPeers(address);
+        const serverConnections = this.getListenerPeers(address);
         if (serverConnections != null && serverConnections.length == 1) {
 
             const otherPeer = serverConnections[0];

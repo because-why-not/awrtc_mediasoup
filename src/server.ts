@@ -3,7 +3,7 @@ import { SoupSignalingServer } from "./SoupSignalingServer";
 
 
 
-let config : RelayServerConfig = require("../config.json");
+const config : RelayServerConfig = require("../config.json");
 
-let signalingServer = new SoupSignalingServer();
+const signalingServer = new SoupSignalingServer();
 signalingServer.init(config);

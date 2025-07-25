@@ -86,11 +86,11 @@ class SoupServer {
 
     public async createOutgoingPeer(from: IncomingPeerEndpoint): Promise<OutgoingPeerEndpoint> {
 
-        let outgoingTransport = await this.createTransport()
-        let outgoingSdpEndpoint = await this.createSdpEndpoint(outgoingTransport);
+        const outgoingTransport = await this.createTransport()
+        const outgoingSdpEndpoint = await this.createSdpEndpoint(outgoingTransport);
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
 
-        let consumer1 = await outgoingTransport
+        const consumer1 = await outgoingTransport
             .consume({
                 producerId: from.producers[0].id,
                 rtpCapabilities: endpointRtpCapabilities,
@@ -99,7 +99,7 @@ class SoupServer {
                 ignoreDtx: true
             })
             .catch((error) => console.error("transport.consume() failed:", error));
-        let consumer2 = await outgoingTransport
+        const consumer2 = await outgoingTransport
             .consume({
                 producerId: from.producers[1].id,
                 rtpCapabilities: endpointRtpCapabilities,
@@ -197,7 +197,7 @@ class SoupServer {
     }
     async createSdpEndpoint(transport): Promise<SdpBridge.SdpEndpoint> {
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
-        return await SdpBridge.createSdpEndpoint(transport, endpointRtpCapabilities as RtpCapabilities);
+        return await SdpBridge.createSdpEndpoint(transport, endpointRtpCapabilities);
     }
 
 
@@ -247,7 +247,7 @@ class SoupServer {
         };
 
 
-        let transport =
+        const transport =
             await this.router.createWebRtcTransport(webRtcTransportOptions as any);
 
 
