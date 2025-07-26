@@ -8,7 +8,6 @@ import { IncomingPeerEndpoint, OutgoingPeerEndpoint, SdpMessageObj } from "./Pee
 console.log(mediasoup.version);
 console.log(mediasoup.workerBin);
 
-const LOCAL_IP = '192.168.1.46';
 
 class SoupServer {
 
@@ -209,29 +208,6 @@ class SoupServer {
 
         const webRtcTransportOptions =
         {
-            listenInfos:
-                [
-                    {
-                        protocol: 'udp',
-                        ip: process.env.MEDIASOUP_LISTEN_IP || LOCAL_IP,
-                        announcedAddress: process.env.MEDIASOUP_ANNOUNCED_IP,
-                        portRange:
-                        {
-                            min: 40000,
-                            max: 49999,
-                        }
-                    },
-                    {
-                        protocol: 'tcp',
-                        ip: process.env.MEDIASOUP_LISTEN_IP || LOCAL_IP,
-                        announcedAddress: process.env.MEDIASOUP_ANNOUNCED_IP,
-                        portRange:
-                        {
-                            min: 40000,
-                            max: 49999,
-                        }
-                    }
-                ],
             initialAvailableOutgoingBitrate: 1000000,
             maxSctpMessageSize: 262144,
             // Additional options that are not part of WebRtcTransportOptions.
