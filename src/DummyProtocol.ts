@@ -126,8 +126,7 @@ export class DummyInProtocol extends DummyProtocol {
                 if (json.type === 'offer') {
                     // Handle offer logic here
                     console.log('Processing offer...');
-                    const sdp = await this.soupServer.processOffer(this.soupPeer, json);
-                    const answerObj = { type: "answer", sdp: sdp };
+                    const answerObj = await this.soupServer.processOffer(this.soupPeer, json);
                     const answerMsg = JSON.stringify(answerObj);
 
                     this.forwardMessage(answerMsg, id);
@@ -220,9 +219,8 @@ export class DummyOutProtocol extends DummyProtocol {
         const id = new ConnectionId(17000);
         this.mListener.onNetworkEvent(new NetworkEvent(NetEventType.NewConnection, id, address));
 
-        const offer = await this.soupServer.createOffer(this.soupPeer);
-        console.log(offer);
-        const offerObj = { type: "offer", sdp: offer };
+        const offerObj = await this.soupServer.createOffer(this.soupPeer);
+        console.log(offerObj);
         const offerMsg = JSON.stringify(offerObj);
         this.forwardMessage(offerMsg, id);
     }

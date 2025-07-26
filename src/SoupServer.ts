@@ -138,10 +138,12 @@ class SoupServer {
     }
 
     //Creates an offer for an ougoing stream with 1 audio and 1 video track
-    public async createOffer(outgingPeer: OutgoingPeerEndpoint) {
+    public async createOffer(outgingPeer: OutgoingPeerEndpoint) : Promise<SdpMessageObj>{
 
-        const sdpOffer = outgingPeer.sdpEndpoint.createOffer();
-        return sdpOffer;
+        const sdp = outgingPeer.sdpEndpoint.createOffer();
+
+        const offerObj = { type: "offer", sdp: sdp };
+        return offerObj;
     }
 
     //Processes an answer for outgoing streams after the client responded to createOffer above
@@ -192,7 +194,8 @@ class SoupServer {
 
         const sdpAnswer = incomingPeer.sdpEndpoint.createAnswer();
 
-        return sdpAnswer;
+        const answerObj = { type: "answer", sdp: sdpAnswer };
+        return answerObj;
     }
     async createSdpEndpoint(transport): Promise<SdpBridge.SdpEndpoint> {
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
