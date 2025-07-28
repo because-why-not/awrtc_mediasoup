@@ -1,6 +1,6 @@
 import { PeerPool, SignalingPeer, AppConfig, ConnectionId, NetEventType, NetworkEvent, Protocol, ILogger } from "awrtc_signaling";
 import { SoupServer } from "./SoupServer";
-import { IncomingPeerEndpoint, OutgoingPeerEndpoint } from "./PeerEndpoint";
+import { IncomingSoupPeer, OutgoingSoupPeer, PeerConnectionStateCallback, SoupPeerConnectionState } from "./SoupPeer";
 import { ISignalingPeer } from "awrtc_signaling/out/SignalingPeer";
 import { DummyInProtocol, DummyOutProtocol } from "./DummyProtocol";
 
@@ -14,7 +14,7 @@ interface AddressReceiversDict {
 
 class Sender {
     //WebRTC / Mediasoup specific peer
-    public soupPeer: IncomingPeerEndpoint;
+    public soupPeer: IncomingSoupPeer;
 
     //signaling peer that connects us to the client side peer
     public dummyPeer: SignalingPeer;
@@ -24,7 +24,7 @@ class Sender {
 }
 
 class Receiver {
-    public soupPeer: OutgoingPeerEndpoint;
+    public soupPeer: OutgoingSoupPeer;
     public dummyPeer: SignalingPeer;
     public protocol: DummyOutProtocol;
 }
@@ -56,7 +56,7 @@ export class RelayController extends PeerPool {
         this.mSoupServer = soupServer;
     }
 
-    private addSender(address: string, dummyPeer: SignalingPeer, dummyProtocol: DummyInProtocol, soupPeer: IncomingPeerEndpoint) {
+    private addSender(address: string, dummyPeer: SignalingPeer, dummyProtocol: DummyInProtocol, soupPeer: IncomingSoupPeer) {
 
         const sender = new Sender();
         sender.dummyPeer = dummyPeer;
@@ -67,14 +67,9 @@ export class RelayController extends PeerPool {
         this.mReceivers[address] = [];
         this.mConnections.push(dummyPeer);
 
-
-
-        sender.soupPeer.transport.on('dtlsstatechange', (dtlsState) => {
-            console.log("Sender dtlsstatechange", dtlsState);
-            if (dtlsState === 'failed' || dtlsState === 'closed') {
-                //clean up
-                //TODO: Check if this needs special handling. The sender might still be connected via signaling
-                //and listening on the address but the peer connection failed for unrelated reasons
+        sender.soupPeer.setListener((state: SoupPeerConnectionState)=>{
+            console.log("Sender state", state);
+            if(state === SoupPeerConnectionState.EndedOrFailed){
                 this.removeSender(address, sender);
             }
         });
@@ -86,7 +81,7 @@ export class RelayController extends PeerPool {
         //if the user was a sender -> also remove it from our sender list
         const senderInfo = this.mSenders[address];
         if (senderInfo) {
-            if (senderInfo.soupPeer.transport.dtlsState == "connected") {
+            if (senderInfo.soupPeer.State == SoupPeerConnectionState.Connected) {
                 //clients with KeepSignalingAlive == false and IsConference == false will trigger this situation. They end signaling
                 //connections once fully connected. This is normal. The sender is cleaned once mediasoup connection ends
                 console.log(`Address ${address} was freed but an active sender remains.`);
@@ -105,11 +100,7 @@ export class RelayController extends PeerPool {
     //TODO: Remove sender argument. Replace with this.mSenders[address]
     private removeSender(address: string, sender: Sender) {
         //make sure everything is closed if not yet done
-        sender.soupPeer.transport.close();
-        sender.soupPeer.consumerPeers.forEach((x) => {
-            console.log("Closing receiver's consumer because sender stopped.");
-            x.transport.close();
-        });
+        sender.soupPeer.close();
         sender.protocol.triggerClosure();
 
         if (!this.mSenders[address]) {
@@ -137,7 +128,7 @@ export class RelayController extends PeerPool {
     private removeReceiver(address: string, receiver: Receiver) {
 
         //make sure everything is closed if not yet done
-        receiver.soupPeer.transport.close();
+        receiver.soupPeer.close();
         receiver.protocol.triggerClosure();
 
         //remove from receiver list
@@ -153,7 +144,7 @@ export class RelayController extends PeerPool {
         }
     }
 
-    private addReceiver(address: string, dummyPeer: SignalingPeer, dummyProtocol: DummyOutProtocol, soupPeer: OutgoingPeerEndpoint) {
+    private addReceiver(address: string, dummyPeer: SignalingPeer, dummyProtocol: DummyOutProtocol, soupPeer: OutgoingSoupPeer) {
 
         const receiver = new Receiver();
         receiver.dummyPeer = dummyPeer;
@@ -164,10 +155,9 @@ export class RelayController extends PeerPool {
         this.mConnections.push(dummyPeer);
 
 
-
-        receiver.soupPeer.transport.on('dtlsstatechange', (dtlsState) => {
-            console.log("Receiver dtlsstatechange", dtlsState);
-            if (dtlsState === 'failed' || dtlsState === 'closed') {
+        receiver.soupPeer.setListener((state: SoupPeerConnectionState)=>{
+            console.log("Receiver state", state);
+            if(state === SoupPeerConnectionState.EndedOrFailed){
                 this.removeReceiver(address, receiver);
             }
         });

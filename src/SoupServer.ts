@@ -2,7 +2,7 @@ import * as mediasoup from "mediasoup";
 import * as RtpHelper from "./rtphelper";
 import * as SdpBridge from "./external/mediasoup-sdp-bridge/index";
 import { Worker, WebRtcServer, Router, RtpCodecCapability, WebRtcTransportOptions, RtpCapabilities, WebRtcTransport, Consumer, TransportListenInfo } from "mediasoup/types"
-import { IncomingPeerEndpoint, OutgoingPeerEndpoint, SdpMessageObj } from "./PeerEndpoint";
+import { IncomingSoupPeer, OutgoingSoupPeer, SdpMessageObj } from "./SoupPeer";
 
 
 console.log(mediasoup.version);
@@ -83,10 +83,10 @@ class SoupServer {
 
 
 
-    public async createOutgoingPeer(from: IncomingPeerEndpoint): Promise<OutgoingPeerEndpoint> {
+    public async createOutgoingPeer(from: IncomingSoupPeer): Promise<OutgoingSoupPeer> {
 
         const outgoingTransport = await this.createTransport()
-        const outgoingSdpEndpoint = await this.createSdpEndpoint(outgoingTransport);
+        const outgoingSdpEndpoint = this.createSdpEndpoint(outgoingTransport);
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
 
         const consumer1 = await outgoingTransport
@@ -121,58 +121,23 @@ class SoupServer {
 
         const consumers = [consumer1 as Consumer, consumer2 as Consumer];
 
-        const outgingPeer = new OutgoingPeerEndpoint();
-        outgingPeer.transport = outgoingTransport;
-        outgingPeer.sdpEndpoint = outgoingSdpEndpoint; 
+        const outgingPeer = new OutgoingSoupPeer(outgoingTransport, outgoingSdpEndpoint);
         outgingPeer.consumers = consumers;
-
-
         from.consumerPeers.push(outgingPeer);
 
         return outgingPeer;
     }
 
-    //Creates an offer for an ougoing stream with 1 audio and 1 video track
-    //Leave as async for now in case we need a more complex createOffer in the future
-    // eslint-disable-next-line @typescript-eslint/require-await
-    public async createOffer(outgingPeer: OutgoingPeerEndpoint) : Promise<SdpMessageObj>{
 
-        const sdp = outgingPeer.sdpEndpoint.createOffer();
-
-        const offerObj = { type: "offer", sdp: sdp };
-        return offerObj;
-    }
-
-    //Processes an answer for outgoing streams after the client responded to createOffer above
-    public async processAnswer(outgoingPeer: OutgoingPeerEndpoint, answerObj: SdpMessageObj) {
-        await outgoingPeer.sdpEndpoint.processAnswer(answerObj.sdp);
-    }
-
-
-    public async createIncomingPeer(): Promise<IncomingPeerEndpoint> {
+    public async createIncomingPeer(): Promise<IncomingSoupPeer> {
 
         const incomingTransport = await this.createTransport();
         const incomingSdpEndpoint = this.createSdpEndpoint(incomingTransport);
-        const incomingPeer = new IncomingPeerEndpoint();
-        incomingPeer.transport = incomingTransport;
-        incomingPeer.sdpEndpoint = incomingSdpEndpoint;
+        const incomingPeer = new IncomingSoupPeer(incomingTransport, incomingSdpEndpoint);
         incomingPeer.init();
         return incomingPeer;
     }
 
-
-    //processes an incoming offer for an incoming stream
-    //and returns an answer
-    public async processOffer(incomingPeer: IncomingPeerEndpoint, offerObj: SdpMessageObj): Promise<SdpMessageObj> {
-
-        const offerRes = await incomingPeer.sdpEndpoint.processOffer(offerObj.sdp, undefined);
-        incomingPeer.producers = offerRes.producers;
-
-        const sdpAnswer = incomingPeer.sdpEndpoint.createAnswer();
-
-        const answerObj = { type: "answer", sdp: sdpAnswer };
-        return answerObj;
-    }
     createSdpEndpoint(transport: WebRtcTransport ): SdpBridge.SdpEndpoint {
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
         return SdpBridge.createSdpEndpoint(transport, endpointRtpCapabilities);

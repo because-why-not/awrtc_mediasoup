@@ -11,6 +11,7 @@
     "postinstall": "patch-package",
     "lint": "eslint",
     "test": "vitest",
+    "typecheck": "tsc --noEmit --watch",
     "format": "prettier --write \"src/**/*.{ts,js}\" \"tests/**/*.{ts,js}\""
   },
   "author": "",

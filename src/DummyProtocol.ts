@@ -1,5 +1,5 @@
 import { ConnectionId, ILogger, NetEventType, NetworkEvent, Protocol } from "awrtc_signaling";
-import { IncomingPeerEndpoint, OutgoingPeerEndpoint, SdpMessageObj } from "./PeerEndpoint";
+import { IncomingSoupPeer, OutgoingSoupPeer, SdpMessageObj } from "./SoupPeer";
 import { SoupServer } from "./SoupServer";
 
 
@@ -104,7 +104,7 @@ export class DummyInProtocol extends DummyProtocol {
     //send is triggered by the clients own peer. Meaning
     //these are the messages we receive 
 
-    constructor(public soupPeer: IncomingPeerEndpoint, public soupServer: SoupServer, logger: ILogger) {
+    constructor(public soupPeer: IncomingSoupPeer, public soupServer: SoupServer, logger: ILogger) {
         super(logger);
     }
     async handleMessage(msg: string, id: ConnectionId) {
@@ -127,7 +127,7 @@ export class DummyInProtocol extends DummyProtocol {
                     // Handle offer logic here
                     console.log('Processing offer...');
                     const offerObj = json as SdpMessageObj;
-                    const answerObj = await this.soupServer.processOffer(this.soupPeer, offerObj);
+                    const answerObj = await this.soupPeer.processOffer(offerObj);
                     const answerMsg = JSON.stringify(answerObj);
 
                     this.forwardMessage(answerMsg, id);
@@ -165,7 +165,7 @@ export class DummyOutProtocol extends DummyProtocol {
     //send is triggered by the clients own peer. Meaning
     //these are the messages we receive 
 
-    constructor(public soupPeer: OutgoingPeerEndpoint, public soupServer: SoupServer, logger: ILogger) {
+    constructor(public soupPeer: OutgoingSoupPeer, public soupServer: SoupServer, logger: ILogger) {
         super(logger);
     }
     async handleMessage(msg: string, id: ConnectionId): Promise<void> {
@@ -190,7 +190,7 @@ export class DummyOutProtocol extends DummyProtocol {
 
                     // Handle offer logic here
                     console.log('Processing offer...');
-                    const sdp = await this.soupServer.processAnswer(this.soupPeer, json as SdpMessageObj);
+                    const sdp = await this.soupPeer.processAnswer(json as SdpMessageObj);
                     const answerObj = { type: "answer", sdp: sdp };
                     const answerMsg = JSON.stringify(answerObj);
                     this.forwardMessage(answerMsg, id);
@@ -220,7 +220,7 @@ export class DummyOutProtocol extends DummyProtocol {
         const id = new ConnectionId(17000);
         this.mListener.onNetworkEvent(new NetworkEvent(NetEventType.NewConnection, id, address));
 
-        const offerObj = await this.soupServer.createOffer(this.soupPeer);
+        const offerObj = await this.soupPeer.createOffer();
         console.log(offerObj);
         const offerMsg = JSON.stringify(offerObj);
         this.forwardMessage(offerMsg, id);
