@@ -126,7 +126,8 @@ export class DummyInProtocol extends DummyProtocol {
                 if (json.type === 'offer') {
                     // Handle offer logic here
                     console.log('Processing offer...');
-                    const answerObj = await this.soupServer.processOffer(this.soupPeer, json);
+                    const offerObj = json as SdpMessageObj;
+                    const answerObj = await this.soupServer.processOffer(this.soupPeer, offerObj);
                     const answerMsg = JSON.stringify(answerObj);
 
                     this.forwardMessage(answerMsg, id);

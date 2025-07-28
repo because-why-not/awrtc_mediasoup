@@ -121,23 +121,20 @@ class SoupServer {
 
         const consumers = [consumer1 as Consumer, consumer2 as Consumer];
 
-        const outgingPeer = { transport: outgoingTransport, sdpEndpoint: outgoingSdpEndpoint, consumers: consumers };
+        const outgingPeer = new OutgoingPeerEndpoint();
+        outgingPeer.transport = outgoingTransport;
+        outgingPeer.sdpEndpoint = outgoingSdpEndpoint; 
+        outgingPeer.consumers = consumers;
 
 
-        outgingPeer.transport.on('dtlsstatechange', (dtlsState) => {
-            console.log("dtlsstatechange", dtlsState);
-            if (dtlsState === 'failed' || dtlsState === 'closed') {
-                //an outgoing stream failed. 
-                //TODO: This chould either mean the user left or has connection issues and needs to reconnect this specific peer
-                console.log("Outgoing stream failed. Won't recover.");
-            }
-        });
         from.consumerPeers.push(outgingPeer);
 
         return outgingPeer;
     }
 
     //Creates an offer for an ougoing stream with 1 audio and 1 video track
+    //Leave as async for now in case we need a more complex createOffer in the future
+    // eslint-disable-next-line @typescript-eslint/require-await
     public async createOffer(outgingPeer: OutgoingPeerEndpoint) : Promise<SdpMessageObj>{
 
         const sdp = outgingPeer.sdpEndpoint.createOffer();
@@ -155,51 +152,30 @@ class SoupServer {
     public async createIncomingPeer(): Promise<IncomingPeerEndpoint> {
 
         const incomingTransport = await this.createTransport();
-        const incomingSdpEndpoint = await this.createSdpEndpoint(incomingTransport);
-        //TODO: unclear if 2nd argument scalabilityMode is needed / used
-
-        const incomingPeer = {
-            transport: incomingTransport,
-            sdpEndpoint: incomingSdpEndpoint,
-            producers: [],
-            consumerPeers: []
-        };
-        //await this.addReceivingDataChannels(client);
-
-        //OUTGOING DC TEST via incoming peer
-        //this.addSendingDataChannels(incomingTransport, incomingSdpEndpoint, client);
-        //OUTGOING DC TEST
+        const incomingSdpEndpoint = this.createSdpEndpoint(incomingTransport);
+        const incomingPeer = new IncomingPeerEndpoint();
+        incomingPeer.transport = incomingTransport;
+        incomingPeer.sdpEndpoint = incomingSdpEndpoint;
+        incomingPeer.init();
         return incomingPeer;
     }
 
 
     //processes an incoming offer for an incoming stream
     //and returns an answer
-    public async processOffer(incomingPeer: IncomingPeerEndpoint, offerObj): Promise<string> {
+    public async processOffer(incomingPeer: IncomingPeerEndpoint, offerObj: SdpMessageObj): Promise<SdpMessageObj> {
 
         const offerRes = await incomingPeer.sdpEndpoint.processOffer(offerObj.sdp, undefined);
         incomingPeer.producers = offerRes.producers;
-
-        incomingPeer = incomingPeer;
-        incomingPeer.transport.on('dtlsstatechange', (dtlsState) => {
-            console.log("dtlsstatechange", dtlsState);
-            if (dtlsState === 'failed' || dtlsState === 'closed') {
-                //the incoming stream failed -> cleanup all our relay streams
-                incomingPeer.consumerPeers.forEach(x => {
-                    x.transport.close();
-                });
-                incomingPeer.transport.close();
-            }
-        });
 
         const sdpAnswer = incomingPeer.sdpEndpoint.createAnswer();
 
         const answerObj = { type: "answer", sdp: sdpAnswer };
         return answerObj;
     }
-    async createSdpEndpoint(transport): Promise<SdpBridge.SdpEndpoint> {
+    createSdpEndpoint(transport: WebRtcTransport ): SdpBridge.SdpEndpoint {
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
-        return await SdpBridge.createSdpEndpoint(transport, endpointRtpCapabilities);
+        return SdpBridge.createSdpEndpoint(transport, endpointRtpCapabilities);
     }
 
 
@@ -216,7 +192,6 @@ class SoupServer {
             // Additional options that are not part of WebRtcTransportOptions.
             maxIncomingBitrate: 1500000,
             minimumAvailableOutgoingBitrate: 600000,
-
             webRtcServer: this.webRtcServer,
             iceConsentTimeout: 20,
             enableSctp: true,
@@ -227,53 +202,7 @@ class SoupServer {
 
 
         const transport =
-            await this.router.createWebRtcTransport(webRtcTransportOptions as any);
-
-
-        transport.on('icestatechange', (iceState) => {
-            console.log("icestatechange", iceState);
-            if (iceState === 'disconnected' || iceState === 'closed') {
-                console.warn('WebRtcTransport "icestatechange" event [iceState:%s], closing peer', iceState);
-
-                //exit
-            }
-        });
-
-        transport.on('sctpstatechange', (sctpState) => {
-            console.log("sctpstatechange", sctpState);
-
-        });
-
-        transport.on('dtlsstatechange', (dtlsState) => {
-            console.log("dtlsstatechange", dtlsState);
-            if (dtlsState === 'failed' || dtlsState === 'closed') {
-                console.warn('WebRtcTransport "dtlsstatechange" event [dtlsState:%s], closing peer', dtlsState);
-
-                //exit 
-            }
-        });
-
-        transport.observer.on('newdataproducer', (dataProducer) => {
-            console.warn('newdataproducer', dataProducer);
-            //dataProducers.set(dataProducer.id, dataProducer);
-            //dataProducer.observer.on('close', () => dataProducers.delete(dataProducer.id));
-        });
-
-        transport.observer.on('newdataconsumer', (dataConsumer) => {
-            console.warn('newdataconsumer', dataConsumer);
-
-            //dataConsumers.set(dataConsumer.id, dataConsumer);
-            //dataConsumer.observer.on('close', () => dataConsumers.delete(dataConsumer.id));
-        });
-        /*
-                await transport.enableTraceEvent(['bwe']);
-                transport.on('trace', (trace) => {
-        
-                    console.debug(
-                        'transport "trace" event [transportId:%s, trace.type:%s, trace:%o]',
-                        transport.id, trace.type, trace);
-                });
-        */
+            await this.router.createWebRtcTransport(webRtcTransportOptions);
 
         const { maxIncomingBitrate } = webRtcTransportOptions;
 
