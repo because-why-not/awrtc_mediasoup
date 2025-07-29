@@ -10,9 +10,7 @@ export enum SoupPeerConnectionState {
     //disconnect or close called
     Closed = "Closed"
 }
-/**
- * 
- */
+
 export class SoupPeer {
     protected mTransport: WebRtcTransport;
     protected mSdpEndpoint: SdpEndpoint;
@@ -22,24 +20,29 @@ export class SoupPeer {
         return this.mState;
     }
 
-    
+    private connectionStateCallback: Set<PeerConnectionStateCallback> = new Set();
+    private connectionTimeout?: NodeJS.Timeout;
+
     constructor(transport: WebRtcTransport, sdpEndpoint: SdpEndpoint) {
         this.mTransport = transport;
         this.mSdpEndpoint = sdpEndpoint;
         this.mState = SoupPeerConnectionState.Connecting;
     }
-    private connectionStateCallback?: Set<PeerConnectionStateCallback> = new Set<PeerConnectionStateCallback>();
 
     public addListener(cb: PeerConnectionStateCallback): void {
         this.connectionStateCallback.add(cb);
     }
 
     public remListener(cb: PeerConnectionStateCallback): void {
-        this.connectionStateCallback.add(cb);
+        this.connectionStateCallback.delete(cb);
     }
 
-    private triggerStateChange(state: SoupPeerConnectionState) {
+    private triggerStateChange(state: SoupPeerConnectionState): void {
         this.mState = state;
+
+        if (state === SoupPeerConnectionState.Connected) {
+            this.clearConnectionTimeout();
+        }
 
         for (const cb of this.connectionStateCallback) {
             try {
@@ -49,28 +52,36 @@ export class SoupPeer {
             }
         }
     }
-    public init() {
+
+    public init(): void {
+        // Start 15-second connection timeout
+        this.connectionTimeout = setTimeout(() => {
+            if (this.mState !== SoupPeerConnectionState.Connected) {
+                console.warn("Peer failed to connect within timeout. Forcing close.");
+                this.close();
+            }
+        }, 15000);
+
         this.mTransport.on('icestatechange', (iceState) => {
             console.log("icestatechange", iceState);
             if (iceState === 'disconnected' || iceState === 'closed') {
                 console.warn('WebRtcTransport "icestatechange" event [iceState:%s], closing peer', iceState);
-                //exit
+                //just logging. exit is done via dtlsstatechange
             }
         });
 
         this.mTransport.on('sctpstatechange', (sctpState) => {
             console.log("sctpstatechange", sctpState);
-
         });
 
         this.mTransport.on('dtlsstatechange', (dtlsState) => {
             console.log("dtlsstatechange", dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
                 console.warn('WebRtcTransport "dtlsstatechange" event [dtlsState:%s], closing peer', dtlsState);
-                if (this.mState != SoupPeerConnectionState.Closed) {
+                if (this.mState !== SoupPeerConnectionState.Closed) {
                     this.close();
                 }
-            } else if (dtlsState == "connected") {
+            } else if (dtlsState === "connected") {
                 this.triggerStateChange(SoupPeerConnectionState.Connected);
             }
         });
@@ -83,7 +94,6 @@ export class SoupPeer {
 
         this.mTransport.observer.on('newdataconsumer', (dataConsumer) => {
             console.warn('newdataconsumer', dataConsumer);
-
             //dataConsumers.set(dataConsumer.id, dataConsumer);
             //dataConsumer.observer.on('close', () => dataConsumers.delete(dataConsumer.id));
         });
@@ -98,16 +108,25 @@ export class SoupPeer {
         */
     }
 
+    private clearConnectionTimeout(): void {
+        if (this.connectionTimeout) {
+            clearTimeout(this.connectionTimeout);
+            this.connectionTimeout = undefined;
+        }
+    }
 
-    public close() {
+    public close(): void {
+        this.clearConnectionTimeout();
         this.mTransport.close();
 
-        if (this.mState != SoupPeerConnectionState.Closed) {
+        if (this.mState !== SoupPeerConnectionState.Closed) {
             this.triggerStateChange(SoupPeerConnectionState.Closed);
         }
+
         this.connectionStateCallback.clear();
     }
 }
+
 //Endpoint for media going out to the client
 export class OutgoingSoupPeer extends SoupPeer {
 
