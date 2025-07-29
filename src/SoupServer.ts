@@ -111,19 +111,9 @@ class SoupServer {
         outgoingSdpEndpoint.addConsumer(consumer1 as Consumer);
         outgoingSdpEndpoint.addConsumer(consumer2 as Consumer);
 
-
-
-        //OUTGOING DC TEST
-        //this.addSendingDataChannels(outgoingTransport, outgoingSdpEndpoint, to);
-        //OUTGOING DC TEST END
-
-
-
         const consumers = [consumer1 as Consumer, consumer2 as Consumer];
-
-        const outgingPeer = new OutgoingSoupPeer(outgoingTransport, outgoingSdpEndpoint);
-        outgingPeer.consumers = consumers;
-        from.consumerPeers.push(outgingPeer);
+        const outgingPeer = new OutgoingSoupPeer(outgoingTransport, outgoingSdpEndpoint, consumers);
+        from.addConsumer(outgingPeer);
 
         return outgingPeer;
     }

@@ -81,7 +81,7 @@ export class RelayController extends PeerPool {
         //if the user was a sender -> also remove it from our sender list
         const senderInfo = this.mSenders[address];
         if (senderInfo) {
-            if (senderInfo.soupPeer.State == SoupPeerConnectionState.Connected) {
+            if (senderInfo.soupPeer.state == SoupPeerConnectionState.Connected) {
                 //clients with KeepSignalingAlive == false and IsConference == false will trigger this situation. They end signaling
                 //connections once fully connected. This is normal. The sender is cleaned once mediasoup connection ends
                 console.log(`Address ${address} was freed but an active sender remains.`);
