@@ -67,9 +67,9 @@ export class RelayController extends PeerPool {
         this.mReceivers[address] = [];
         this.mConnections.push(dummyPeer);
 
-        sender.soupPeer.setListener((state: SoupPeerConnectionState)=>{
+        sender.soupPeer.addListener((state: SoupPeerConnectionState)=>{
             console.log("Sender state", state);
-            if(state === SoupPeerConnectionState.EndedOrFailed){
+            if(state === SoupPeerConnectionState.Closed){
                 this.removeSender(address, sender);
             }
         });
@@ -155,9 +155,9 @@ export class RelayController extends PeerPool {
         this.mConnections.push(dummyPeer);
 
 
-        receiver.soupPeer.setListener((state: SoupPeerConnectionState)=>{
+        receiver.soupPeer.addListener((state: SoupPeerConnectionState)=>{
             console.log("Receiver state", state);
-            if(state === SoupPeerConnectionState.EndedOrFailed){
+            if(state === SoupPeerConnectionState.Closed){
                 this.removeReceiver(address, receiver);
             }
         });

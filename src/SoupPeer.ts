@@ -7,8 +7,12 @@ export type PeerConnectionStateCallback = (state: SoupPeerConnectionState) => vo
 export enum SoupPeerConnectionState {
     Connecting = "Connecting",
     Connected = "Connected",
-    EndedOrFailed = "EndedOrFailed"
+    //disconnect or close called
+    Closed = "Closed"
 }
+/**
+ * 
+ */
 export class SoupPeer {
     protected mTransport: WebRtcTransport;
     protected mSdpEndpoint: SdpEndpoint;
@@ -17,20 +21,33 @@ export class SoupPeer {
     public get state() {
         return this.mState;
     }
+
+    
     constructor(transport: WebRtcTransport, sdpEndpoint: SdpEndpoint) {
         this.mTransport = transport;
         this.mSdpEndpoint = sdpEndpoint;
         this.mState = SoupPeerConnectionState.Connecting;
     }
-    private connectionStateCallback?: PeerConnectionStateCallback;
+    private connectionStateCallback?: Set<PeerConnectionStateCallback> = new Set<PeerConnectionStateCallback>();
 
-    public setListener(cb: PeerConnectionStateCallback): void {
-        this.connectionStateCallback = cb;
+    public addListener(cb: PeerConnectionStateCallback): void {
+        this.connectionStateCallback.add(cb);
+    }
+
+    public remListener(cb: PeerConnectionStateCallback): void {
+        this.connectionStateCallback.add(cb);
     }
 
     private triggerStateChange(state: SoupPeerConnectionState) {
         this.mState = state;
-        this.connectionStateCallback?.(state);
+
+        for (const cb of this.connectionStateCallback) {
+            try {
+                cb(state);
+            } catch (err) {
+                console.warn("Error in connectionStateCallback callback:", err);
+            }
+        }
     }
     public init() {
         this.mTransport.on('icestatechange', (iceState) => {
@@ -50,8 +67,8 @@ export class SoupPeer {
             console.log("dtlsstatechange", dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
                 console.warn('WebRtcTransport "dtlsstatechange" event [dtlsState:%s], closing peer', dtlsState);
-                if (this.mState != SoupPeerConnectionState.EndedOrFailed) {
-                    this.triggerStateChange(SoupPeerConnectionState.EndedOrFailed);
+                if (this.mState != SoupPeerConnectionState.Closed) {
+                    this.close();
                 }
             } else if (dtlsState == "connected") {
                 this.triggerStateChange(SoupPeerConnectionState.Connected);
@@ -81,8 +98,14 @@ export class SoupPeer {
         */
     }
 
+
     public close() {
         this.mTransport.close();
+
+        if (this.mState != SoupPeerConnectionState.Closed) {
+            this.triggerStateChange(SoupPeerConnectionState.Closed);
+        }
+        this.connectionStateCallback.clear();
     }
 }
 //Endpoint for media going out to the client
@@ -90,13 +113,10 @@ export class OutgoingSoupPeer extends SoupPeer {
 
     private mConsumers: Consumer[] = [];
 
-    private onCloseCallback?: () => void = null;
-
     constructor(transport: WebRtcTransport, sdpEndpoint: SdpEndpoint, consumers: Consumer[]) {
         super(transport, sdpEndpoint);
         this.mConsumers = consumers;
     }
-
 
     public override init() {
         super.init();
@@ -109,19 +129,10 @@ export class OutgoingSoupPeer extends SoupPeer {
             }
         });
     }
-    setOnClose(cb: () => void) {
-        if(this.onCloseCallback != null){
-            console.warn("setOnClose overwritten. This might cause memory leaks.");
-        }
-        this.onCloseCallback = cb;
-    }
 
     public override close(): void {
         super.close();
-        //TODO: unclear if we need to close these?
-        this.mConsumers.forEach(x => x.close());
-        //used to cleanup the reference in IncomingPeer
-        this.onCloseCallback?.();    
+        this.mConsumers.forEach((x) => x.close());
     }
 
     //Creates an offer for an ougoing stream with 1 audio and 1 video track
@@ -188,8 +199,9 @@ export class IncomingSoupPeer extends SoupPeer {
 
     public addConsumer(outgoingPeer: OutgoingSoupPeer) {
         this.mConsumerPeers.add(outgoingPeer);
-        outgoingPeer.setOnClose(()=>{
-            this.removeConsumer(outgoingPeer);
+        outgoingPeer.addListener((state) => {
+            if(state == SoupPeerConnectionState.Closed)
+                this.removeConsumer(outgoingPeer);
         });
     }
 
