@@ -165,7 +165,7 @@ export class RelayController extends PeerPool {
 
 
     public async createNewIncomingRelay(address: string, incomingSignalingPeer: ISignalingPeer) {
-        console.log("crreating incoming peer for " + address);
+        console.log("creating incoming peer for " + address);
         //create incoming peer
         let soupPeer = await this.mSoupServer.createIncomingPeer();
 
@@ -260,6 +260,7 @@ export class RelayController extends PeerPool {
             }
         } else if (this.isAddressAvailable(address)) {
 
+            console.log("addListener on address " + address);
             //default behaviour of awrtc_signaling. User simply listens on an address
             //waiting for another to connect
             this.addListener(peer, address);
@@ -269,6 +270,7 @@ export class RelayController extends PeerPool {
                 this.acceptJoin(address, peer);
             }
         } else {
+            console.log("denyListening to address " + address);
             //normal awrtc_signaling behaviour -> address is already used by another user and not in sharem ode
             peer.denyListening(address);
         }

@@ -187,13 +187,7 @@ export class DummyOutProtocol extends DummyProtocol {
                 } else if (json.type === 'answer') {
                     // Handle answer logic here
                     console.log('Processing answer...');
-
-                    // Handle offer logic here
-                    console.log('Processing offer...');
-                    const sdp = await this.soupPeer.processAnswer(json as SdpMessageObj);
-                    const answerObj = { type: "answer", sdp: sdp };
-                    const answerMsg = JSON.stringify(answerObj);
-                    this.forwardMessage(answerMsg, id);
+                    await this.soupPeer.processAnswer(json as SdpMessageObj);
                 }
             } else if (typeof json === 'object' && json !== null &&
                 'candidate' in json && 'sdpMLineIndex' in json && 'sdpMid' in json) {
