@@ -3,6 +3,7 @@ import * as RtpHelper from "./rtphelper";
 import * as SdpBridge from "./external/mediasoup-sdp-bridge/index";
 import { Worker, WebRtcServer, Router, RtpCodecCapability, WebRtcTransportOptions, RtpCapabilities, WebRtcTransport, Consumer, TransportListenInfo } from "mediasoup/types"
 import { IncomingSoupPeer, OutgoingSoupPeer, SdpMessageObj } from "./SoupPeer";
+import { ILogger } from "awrtc_signaling";
 
 
 console.log(mediasoup.version);
@@ -83,7 +84,7 @@ class SoupServer {
 
 
 
-    public async createOutgoingPeer(from: IncomingSoupPeer): Promise<OutgoingSoupPeer> {
+    public async createOutgoingPeer(from: IncomingSoupPeer, logger: ILogger): Promise<OutgoingSoupPeer> {
 
         const outgoingTransport = await this.createTransport()
         const outgoingSdpEndpoint = this.createSdpEndpoint(outgoingTransport);
@@ -112,18 +113,18 @@ class SoupServer {
         outgoingSdpEndpoint.addConsumer(consumer2 as Consumer);
 
         const consumers = [consumer1 as Consumer, consumer2 as Consumer];
-        const outgingPeer = new OutgoingSoupPeer(outgoingTransport, outgoingSdpEndpoint, consumers);
+        const outgingPeer = new OutgoingSoupPeer(outgoingTransport, outgoingSdpEndpoint, consumers, logger);
         from.addConsumer(outgingPeer);
 
         return outgingPeer;
     }
 
 
-    public async createIncomingPeer(): Promise<IncomingSoupPeer> {
+    public async createIncomingPeer(logger: ILogger): Promise<IncomingSoupPeer> {
 
         const incomingTransport = await this.createTransport();
         const incomingSdpEndpoint = this.createSdpEndpoint(incomingTransport);
-        const incomingPeer = new IncomingSoupPeer(incomingTransport, incomingSdpEndpoint);
+        const incomingPeer = new IncomingSoupPeer(incomingTransport, incomingSdpEndpoint, logger);
         incomingPeer.init();
         return incomingPeer;
     }

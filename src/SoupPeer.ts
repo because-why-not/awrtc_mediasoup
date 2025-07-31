@@ -1,5 +1,6 @@
 import { Consumer, IceState, Producer, WebRtcTransport } from "mediasoup/types";
 import { SdpEndpoint } from "./external/mediasoup-sdp-bridge";
+import { ILogger } from "awrtc_signaling";
 
 
 export type PeerConnectionStateCallback = (state: SoupPeerConnectionState) => void;
@@ -23,9 +24,12 @@ export class SoupPeer {
     private connectionStateCallback: Set<PeerConnectionStateCallback> = new Set();
     private connectionTimeout?: NodeJS.Timeout;
 
-    constructor(transport: WebRtcTransport, sdpEndpoint: SdpEndpoint) {
+    protected mLog: ILogger;
+
+    constructor(transport: WebRtcTransport, sdpEndpoint: SdpEndpoint, logger: ILogger) {
         this.mTransport = transport;
         this.mSdpEndpoint = sdpEndpoint;
+        this.mLog = logger;
         this.mState = SoupPeerConnectionState.Connecting;
     }
 
@@ -48,7 +52,7 @@ export class SoupPeer {
             try {
                 cb(state);
             } catch (err) {
-                console.warn("Error in connectionStateCallback callback:", err);
+                this.mLog.warn("Error in connectionStateCallback callback:"  +  JSON.stringify(err));
             }
         }
     }
@@ -57,15 +61,15 @@ export class SoupPeer {
         // Start 15-second connection timeout
         this.connectionTimeout = setTimeout(() => {
             if (this.mState !== SoupPeerConnectionState.Connected) {
-                console.warn("Peer failed to connect within timeout. Forcing close.");
+                this.mLog.warn("Peer failed to connect within timeout. Forcing close.");
                 this.close();
             }
         }, 15000);
 
         this.mTransport.on('icestatechange', (iceState: IceState) => {
-            console.log("icestatechange", iceState);
+            this.mLog.log("icestatechange" + iceState);
             if (iceState === 'disconnected' || iceState === 'closed') {
-                console.warn('WebRtcTransport "icestatechange" event [iceState:%s], closing peer', iceState);
+                this.mLog.warn('WebRtcTransport "icestatechange" event [iceState:%s], closing peer ' +  iceState);
                 if (this.mState !== SoupPeerConnectionState.Closed) {
                     this.close();
                 }
@@ -73,13 +77,13 @@ export class SoupPeer {
         });
 
         this.mTransport.on('sctpstatechange', (sctpState) => {
-            console.log("sctpstatechange", sctpState);
+            this.mLog.log("sctpstatechange" + sctpState);
         });
 
         this.mTransport.on('dtlsstatechange', (dtlsState) => {
-            console.log("dtlsstatechange", dtlsState);
+            this.mLog.log("dtlsstatechange " + dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
-                console.warn('WebRtcTransport "dtlsstatechange" event [dtlsState:%s], closing peer', dtlsState);
+                this.mLog.warn('WebRtcTransport "dtlsstatechange" event [dtlsState:%s], closing peer ' + dtlsState);
                 if (this.mState !== SoupPeerConnectionState.Closed) {
                     this.close();
                 }
@@ -89,13 +93,13 @@ export class SoupPeer {
         });
 
         this.mTransport.observer.on('newdataproducer', (dataProducer) => {
-            console.warn('newdataproducer', dataProducer);
+            this.mLog.warn('newdataproducer');
             //dataProducers.set(dataProducer.id, dataProducer);
             //dataProducer.observer.on('close', () => dataProducers.delete(dataProducer.id));
         });
 
         this.mTransport.observer.on('newdataconsumer', (dataConsumer) => {
-            console.warn('newdataconsumer', dataConsumer);
+            this.mLog.warn('newdataconsumer');
             //dataConsumers.set(dataConsumer.id, dataConsumer);
             //dataConsumer.observer.on('close', () => dataConsumers.delete(dataConsumer.id));
         });
@@ -103,7 +107,7 @@ export class SoupPeer {
                 await transport.enableTraceEvent(['bwe']);
                 transport.on('trace', (trace) => {
         
-                    console.debug(
+                    this.mLog.debug(
                         'transport "trace" event [transportId:%s, trace.type:%s, trace:%o]',
                         transport.id, trace.type, trace);
                 });
@@ -118,14 +122,13 @@ export class SoupPeer {
     }
 
     public close(): void {
-        this.clearConnectionTimeout();
-        this.mTransport.close();
-
         if (this.mState !== SoupPeerConnectionState.Closed) {
+            this.mLog.log("close()");
+            this.clearConnectionTimeout();
+            this.mTransport.close();
             this.triggerStateChange(SoupPeerConnectionState.Closed);
+            this.connectionStateCallback.clear();
         }
-
-        this.connectionStateCallback.clear();
     }
 }
 
@@ -134,19 +137,19 @@ export class OutgoingSoupPeer extends SoupPeer {
 
     private mConsumers: Consumer[] = [];
 
-    constructor(transport: WebRtcTransport, sdpEndpoint: SdpEndpoint, consumers: Consumer[]) {
-        super(transport, sdpEndpoint);
+    constructor(transport: WebRtcTransport, sdpEndpoint: SdpEndpoint, consumers: Consumer[], logger: ILogger) {
+        super(transport, sdpEndpoint, logger);
         this.mConsumers = consumers;
     }
 
     public override init() {
         super.init();
         this.mTransport.on('dtlsstatechange', (dtlsState) => {
-            console.log("dtlsstatechange", dtlsState);
+            this.mLog.log("dtlsstatechange " + dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
                 //an outgoing stream failed. 
                 //TODO: This chould either mean the user left or has connection issues and needs to reconnect this specific peer
-                console.log("Outgoing stream failed. Won't recover.");
+                this.mLog.log("Outgoing stream failed. Won't recover.");
             }
         });
     }
@@ -185,9 +188,9 @@ export class IncomingSoupPeer extends SoupPeer {
     public override init() {
         super.init();
         this.mTransport.on('dtlsstatechange', (dtlsState) => {
-            console.log("dtlsstatechange", dtlsState);
+            this.mLog.log("dtlsstatechange " +  dtlsState);
             if (dtlsState === 'failed' || dtlsState === 'closed') {
-                console.log("Incoming stream failed. Won't recover.");
+                this.mLog.log("Incoming stream failed. Won't recover.");
                 //the incoming stream failed -> cleanup all our relay streams
                 this.mConsumerPeers.forEach(x => {
                     x.close();
@@ -200,7 +203,7 @@ export class IncomingSoupPeer extends SoupPeer {
     public override close(): void {
         super.close();
         this.mConsumerPeers.forEach((x) => {
-            console.log("Closing receiver's consumer because sender stopped.");
+            this.mLog.log("Closing receiver's consumer because sender stopped.");
             x.close();
         });
     }

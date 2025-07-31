@@ -166,6 +166,7 @@ export class DummyOutProtocol extends DummyProtocol {
     constructor(public soupPeer: OutgoingSoupPeer, public soupServer: SoupServer, logger: ILogger) {
         super(logger);
     }
+    
     override async handleMessage(msg: string, id: ConnectionId): Promise<void> {
         try {
             const json: unknown = JSON.parse(msg);
