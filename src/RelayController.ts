@@ -188,12 +188,22 @@ export class RelayController extends PeerPool {
     }
 
     public hasSender(receiverOrSenderAddress: string): boolean {
-        let senderAddress = RelayController.toSenderAddress(receiverOrSenderAddress);
-        if (this.mSenders[senderAddress]) {
+        const senderAddress = RelayController.toSenderAddress(receiverOrSenderAddress);
+        const sender = this.mSenders[senderAddress];
+        if (sender) {
             return true;
         }
         return false;
     }
+    public hasReadySender(receiverOrSenderAddress: string): boolean {
+        const senderAddress = RelayController.toSenderAddress(receiverOrSenderAddress);
+        const sender = this.mSenders[senderAddress];
+        if (sender && sender.soupPeer.state == SoupPeerConnectionState.Connected) {
+            return true;
+        }
+        return false;
+    }
+
 
     public static toSenderAddress(receiverOrSenderAddress: string) {
 
@@ -246,14 +256,14 @@ export class RelayController extends PeerPool {
         } else if (address.endsWith("_rec")) {
             //user attempts to listen from a mediasoup sender
 
-            if (this.hasSender(address)) {
+            if (this.hasReadySender(address)) {
                 console.log("New receiver on address " + address);
                 this.addListener(peer, address);
                 peer.acceptListening(address);
                 this.createNewOutgoingRelay(address, peer);
             } else {
 
-                console.log("New receiver denied. No sender available");
+                console.log("New receiver denied. Unknown sender or sender not yet ready");
                 //for simplicity we block any receivers if no sender is available
                 //in the future receivers could wait for senders to arrive
                 peer.denyListening(address);

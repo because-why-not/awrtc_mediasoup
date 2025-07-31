@@ -1,4 +1,4 @@
-import { Consumer, Producer, WebRtcTransport } from "mediasoup/types";
+import { Consumer, IceState, Producer, WebRtcTransport } from "mediasoup/types";
 import { SdpEndpoint } from "./external/mediasoup-sdp-bridge";
 
 
@@ -62,11 +62,13 @@ export class SoupPeer {
             }
         }, 15000);
 
-        this.mTransport.on('icestatechange', (iceState) => {
+        this.mTransport.on('icestatechange', (iceState: IceState) => {
             console.log("icestatechange", iceState);
             if (iceState === 'disconnected' || iceState === 'closed') {
                 console.warn('WebRtcTransport "icestatechange" event [iceState:%s], closing peer', iceState);
-                //just logging. exit is done via dtlsstatechange
+                if (this.mState !== SoupPeerConnectionState.Closed) {
+                    this.close();
+                }
             }
         });
 
