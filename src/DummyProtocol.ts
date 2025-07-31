@@ -27,16 +27,16 @@ abstract class DummyProtocol extends Protocol {
 
     //Send is called when the client tries to send a message to us
     public send(evt: NetworkEvent) {
-        //console.log("dummy received", evt);
+        //this.mLog.log("dummy received", evt);
 
         if (evt.Type == NetEventType.ReliableMessageReceived) {
             //assuming we are connected to a regular peer sending 
             const incMessage = this.evtToString(evt);
-            console.log(this.getIdentity() + "INC: ", incMessage);
+            this.mLog.log("INC:" + incMessage);
 
             this.handleMessage(incMessage, evt.ConnectionId);
         } else if (evt.Type == NetEventType.Disconnected) {
-            console.log(this.getIdentity() + " disconnected from client side.");
+            this.mLog.log(this.getIdentity() + " disconnected from client side.");
             //we remove out dummy peer if our only connection gets cut
             this.triggerClosure();
         }
@@ -54,7 +54,7 @@ abstract class DummyProtocol extends Protocol {
 
     protected forwardMessage(outMessage: string, id: ConnectionId) {
 
-        console.log(this.getIdentity() + "OUT: ", outMessage);
+        this.mLog.log("OUT: " + outMessage);
         const response = this.stringToEvt(outMessage, id);
         this.mListener.onNetworkEvent(response);
     }
@@ -62,7 +62,7 @@ abstract class DummyProtocol extends Protocol {
 
     private evtToString(evt: NetworkEvent): string {
         if (evt.Type != NetEventType.ReliableMessageReceived) {
-            console.error("Must be of type ReliableMessageReceived");
+            this.mLog.error("Must be of type ReliableMessageReceived");
             return null;
         }
         let output = "";
@@ -93,7 +93,7 @@ abstract class DummyProtocol extends Protocol {
     dispose(): void {
         if (this.mIsDisposed == false) {
             this.mIsDisposed = true;
-            console.log(this.getIdentity() + " disposed");
+            this.mLog.log(this.getIdentity() + " disposed");
         }
     }
 }
@@ -107,13 +107,13 @@ export class DummyInProtocol extends DummyProtocol {
     constructor(public soupPeer: IncomingSoupPeer, public soupServer: SoupServer, logger: ILogger) {
         super(logger);
     }
-    async handleMessage(msg: string, id: ConnectionId) {
+    override async handleMessage(msg: string, id: ConnectionId) {
         try {
             const json : unknown = JSON.parse(msg);
 
             // Check if it's a random number
             if (typeof json === 'number') {
-                console.log('Received random number:', json);
+                this.mLog.log('Received random number:' + json);
 
                 this.forwardMessage("0", id);
             } else if (typeof json === 'object' 
@@ -121,19 +121,17 @@ export class DummyInProtocol extends DummyProtocol {
                 && 'type' in json && 'sdp' in json 
                 && (json.type === 'offer' || json.type === 'answer')) {
 
-                console.log(`Received ${json.type}:`, json.sdp);
-
                 if (json.type === 'offer') {
                     // Handle offer logic here
-                    console.log('Processing offer...');
                     const offerObj = json as SdpMessageObj;
+                    this.mLog.log(`Received offer: ${offerObj.sdp}`);
                     const answerObj = await this.soupPeer.processOffer(offerObj);
                     const answerMsg = JSON.stringify(answerObj);
 
                     this.forwardMessage(answerMsg, id);
                 } else {
                     // Handle answer logic here
-                    console.error("Received an answer from an incoming connection. This should not be possible.", json);
+                    this.mLog.error("Received an answer from an incoming connection. This should not be possible. msg: " + msg);
                 }
             } else if (typeof json === 'object' && json !== null &&
                 'candidate' in json && 'sdpMLineIndex' in json && 'sdpMid' in json) {
@@ -141,11 +139,11 @@ export class DummyInProtocol extends DummyProtocol {
                 //ice candidates
             } else {
                 // If none of the above, it's an unknown message type
-                console.warn('Unknown message type received:', json);
+                this.mLog.warn("Unknown message type received: " + msg);
             }
         } catch (error) {
-            console.error('Failed to parse JSON message:', error);
-            console.error('Original message:', msg);
+            this.mLog.error('Failed to parse JSON message:' + JSON.stringify(error));
+            this.mLog.error('Original message:' + msg);
         }
     }
     getIdentity(): string {
@@ -168,27 +166,19 @@ export class DummyOutProtocol extends DummyProtocol {
     constructor(public soupPeer: OutgoingSoupPeer, public soupServer: SoupServer, logger: ILogger) {
         super(logger);
     }
-    async handleMessage(msg: string, id: ConnectionId): Promise<void> {
+    override async handleMessage(msg: string, id: ConnectionId): Promise<void> {
         try {
             const json: unknown = JSON.parse(msg);
             if (typeof json === 'number') {
                 // we ignore random numbers to negotiate offer / answer roles. 
                 // server must always send an offer for outgoing streams
             } else if (typeof json === 'object' && json !== null &&
-                'type' in json && 'sdp' in json &&
-                (json.type === 'offer' || json.type === 'answer')) {
-
-                console.log(`Received ${json.type}:`, json.sdp);
-
-                if (json.type === 'offer') {
-
-
-                    // Example: await peerConnection.setRemoteDescription(json);
-                } else if (json.type === 'answer') {
-                    // Handle answer logic here
-                    console.log('Processing answer...');
-                    await this.soupPeer.processAnswer(json as SdpMessageObj);
-                }
+                'type' in json && 'sdp' in json && json.type === 'answer') {
+                    const answerObj = json as SdpMessageObj;
+                    this.mLog.log(`Received answer: ${answerObj.sdp}`);
+                    this.mLog.log('Processing answer...');
+                    await this.soupPeer.processAnswer(answerObj);
+                
             } else if (typeof json === 'object' && json !== null &&
                 'candidate' in json && 'sdpMLineIndex' in json && 'sdpMid' in json) {
                 //We currently ignore candidates the client offers. The server's sdp contains the only valid
@@ -196,13 +186,13 @@ export class DummyOutProtocol extends DummyProtocol {
 
             } else {
                 // If none of the above, it's an unknown message type
-                console.warn('Unknown message type received:', json);
+                this.mLog.warn('Unknown or unexpected message type received:' + msg);
             }
 
 
         } catch (error) {
-            console.error('Failed to parse JSON message:', error);
-            console.error('Original message:', msg);
+            this.mLog.error('Failed to parse JSON message:' + JSON.stringify(error));
+            this.mLog.error('Original message:'+ msg);
         }
     }
     getIdentity(): string {
@@ -215,8 +205,8 @@ export class DummyOutProtocol extends DummyProtocol {
         this.mListener.onNetworkEvent(new NetworkEvent(NetEventType.NewConnection, id, address));
 
         const offerObj = await this.soupPeer.createOffer();
-        console.log(offerObj);
         const offerMsg = JSON.stringify(offerObj);
+        this.mLog.log("OUT: " + offerMsg);
         this.forwardMessage(offerMsg, id);
     }
 }
