@@ -5,6 +5,7 @@ import ws from "ws";
 import url from "url";
 import serveStatic from 'serve-static';
 import finalhandler from 'finalhandler';
+import dns from 'dns/promises';
 
 import { WebsocketNetworkServer, DefaultPeerPool, SLogger, TokenManager } from "awrtc_signaling"
 import { RelayController } from "./RelayController";
@@ -23,7 +24,31 @@ export class SoupSignalingServer {
         this.signalingServer = new WebsocketNetworkServer(logger);
     }
 
+    private async initConfig(config: RelayServerConfig) {
+        
+        if (config.announcedAddressFromDomain) {
+            let resolvedIp: string;
+            try {
+                const addresses = await dns.lookup(config.announcedAddressFromDomain);
+                resolvedIp = addresses.address;
+            } catch (err) {
+                console.error(`Failed to resolve domain '${config.announcedAddressFromDomain}':`, err);
+                return;
+            }
+            
+            for (const info of config.listenInfos) {
+                if (!info.announcedAddress && !info.announcedIp) {
+                    info.announcedAddress = resolvedIp;
+                }
+            }
+            console.log(`Resolved announcedAddressFromDomain '${config.announcedAddressFromDomain}' to IP: ${resolvedIp}`);
+            console.log(config.listenInfos);
+        }
+    }
+
     public async init(config: RelayServerConfig) {
+        await this.initConfig(config);
+
         const soupServer = new SoupServer();
         await soupServer.init(config.listenInfos);
 

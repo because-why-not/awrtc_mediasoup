@@ -26,7 +26,7 @@ Edit the file config.json:
 * Update the "ip" field and set the "announcedIp" field if needed
   * If you test this within your own LAN/ WiFi: ip should be the LOCAL IP to listen on
   * If you use this on a server online with a public IP directly associated with the server: ip should be the PUBLIC IP to listen on
-  * If you use this on a server online and behind a NAT: ip should be the LOCAL IP to listen on. Add another field "announcedIp" with the public IP or domain name you want the clients to connect to.
+  * If you use this on a server online and behind a NAT: ip should be the LOCAL IP to listen on. Add another field "announcedIp" with the public IP name you want the clients to connect to.
   * Note the server needs to know an exact IP address or domain for signaling. Just using 0.0.0.0 or :: is not possible.
 * Update the ports under listenInfos (mediasoup WebRTC), httpConfig (signaling via ws) and httpsConfig (signaling via wss) to suit your needs
   * If behind a NAT or firewall remember to open the ports

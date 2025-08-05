@@ -7,5 +7,6 @@ export interface RelayAppConfig extends AppConfig {
 
 export interface RelayServerConfig extends Omit<ServerConfig, 'apps'> {
   apps: RelayAppConfig[];
+  announcedAddressFromDomain?: string;
   listenInfos: TransportListenInfo[]
 }
