@@ -207,6 +207,7 @@ export class IncomingSoupPeer extends SoupPeer {
             x.close();
         });
     }
+    
 
     //processes an incoming offer for an incoming stream
     //and returns an answer

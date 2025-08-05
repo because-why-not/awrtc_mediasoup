@@ -15,12 +15,12 @@ import {
 import * as SdpTransform from "sdp-transform";
 import { v4 as uuidv4 } from "uuid";
 
-import * as BrowserRtpCapabilities from "./BrowserRtpCapabilities";
 import * as SdpUtils from "./SdpUtils";
 
+
+
 export class SdpEndpoint {
-  // TODO: Currently this only handles WebRTC. At some point the implementation
-  // should just use the Transport class and not its subclasses.
+  
   private transport: Transport;
   private webRtcTransport: WebRtcTransport;
 
@@ -31,10 +31,12 @@ export class SdpEndpoint {
   // Local and remote SDPs, obtained/created from SDP Offer/Answer negotiation.
   private localSdp: string | undefined;
   private remoteSdp: string | undefined;
+  public remoteSdpObj: any;
 
   private producers: Producer[] = [];
   private producerOfferMedias: object[] = [];
   private producerOfferParams: RtpParameters[] = [];
+  private producerOfferRtpParameters: RtpParameters[] = [];
   private producerOfferSctpMedia: object | undefined;
 
   private consumers: Consumer[] = [];
@@ -67,6 +69,7 @@ export class SdpEndpoint {
 
     // Parse the SDP message text into an object.
     const remoteSdpObj = SdpTransform.parse(sdpOffer);
+    this.remoteSdpObj = remoteSdpObj;
 
     // sdp-transform bug #94: Type inconsistency in payloads
     // https://github.com/clux/sdp-transform/issues/94
@@ -132,7 +135,7 @@ export class SdpEndpoint {
         );
         continue;
       }
-
+      console.log(JSON.stringify(remoteSdpObj));
       // Generate RtpSendParameters to be used for the new Producer.
       // WARNING: This function only works well for max. 1 audio and 1 video.
       const producerParams = SdpUtils.sdpToProducerRtpParameters(
@@ -143,28 +146,30 @@ export class SdpEndpoint {
       );
 
       // Add a new Producer for the given media.
-      let producer: Producer;
-      try {
-        producer = await this.transport.produce({
-          kind: mediaKind,
-          rtpParameters: producerParams,
-          paused: false,
-        });
-      } catch (error) {
-        let message = `[SdpEndpoint.processOffer] Cannot create mediasoup Producer, kind: ${mediaKind}`;
-        if (error instanceof Error) {
-          message += `, error: ${error.message}`;
+      
+        let producer: Producer;
+        try {
+          producer = await this.transport.produce({
+            kind: mediaKind,
+            rtpParameters: producerParams,
+            paused: media.direction === "recvonly" || media.direction === "inactive",
+          });
+        } catch (error) {
+          let message = `[SdpEndpoint.processOffer] Cannot create mediasoup Producer, kind: ${mediaKind}`;
+          if (error instanceof Error) {
+            message += `, error: ${error.message}`;
+          }
+          console.error(`ERROR ${message}`);
+          throw new Error(message);
         }
-        console.error(`ERROR ${message}`);
-        throw new Error(message);
-      }
 
-      this.producers.push(producer);
+        this.producers.push(producer);
+      console.log(`[SdpEndpoint.processOffer] mediasoup Producer created, kind: ${producer.kind}, type: ${producer.type}, paused: ${producer.paused}`);
+      
       this.producerOfferMedias.push(media);
       this.producerOfferParams.push(producerParams);
 
       // prettier-ignore
-      console.log(`[SdpEndpoint.processOffer] mediasoup Producer created, kind: ${producer.kind}, type: ${producer.type}, paused: ${producer.paused}`);
 
       // DEBUG: Uncomment for details.
       // prettier-ignore
@@ -202,11 +207,13 @@ export class SdpEndpoint {
     for (let i = 0; i < this.producers.length; i++) {
       // Each call to RemoteSdp.send() creates a new AnswerMediaSection,
       // which always assumes an `a=recvonly` direction.
+      const answerRtpParameters = this.producers[i].rtpParameters;
+      
       sdpBuilder.send({
         offerMediaObject: this.producerOfferMedias[i],
         reuseMid: undefined,
         offerRtpParameters: this.producerOfferParams[i],
-        answerRtpParameters: this.producers[i].rtpParameters,
+        answerRtpParameters: answerRtpParameters,
         codecOptions: undefined,
         extmapAllowMixed: false,
       } as any);
@@ -280,24 +287,10 @@ export class SdpEndpoint {
         streamId: sendMsid,
         trackId: `${sendMsid}-${kind}`,
       });
-    }
-
-    if (false && videoRtpParameters) {
-      videoRtpParameters.codecs[0].payloadType = 127;
-      const rtpParameters: RtpParameters = {
-        mid: "probator",
-        codecs: [videoRtpParameters.codecs[0]],
-        headerExtensions: videoRtpParameters.headerExtensions,
-        encodings: [{ ssrc: 1234 }],
-        rtcp: { cname: "probator" },
-      };
-      sdpBuilder.receive({
-        mid: "probator",
-        kind: "video",
-        offerRtpParameters: rtpParameters as any,
-        streamId: "probator",
-        trackId: "probator",
-      });
+      
+      if (this.consumers[i].paused) {
+        (sdpBuilder._findMediaSection(mid) as any)._mediaObject.direction = "recvonly";
+      }
     }
 
     if (this._receiveData) {
@@ -363,37 +356,4 @@ export class SdpEndpoint {
   }
 }
 
-export function createSdpEndpoint(
-  webRtcTransport: WebRtcTransport,
-  localCaps: RtpCapabilities
-): SdpEndpoint {
-  return new SdpEndpoint(webRtcTransport, localCaps);
-}
 
-export function generateRtpCapabilities0(): RtpCapabilities {
-  return BrowserRtpCapabilities.chrome as any;
-}
-
-export function generateRtpCapabilities1(
-  localCaps: RtpCapabilities,
-  remoteSdp: string
-): RtpCapabilities {
-  // TODO: Use proper SDP Offer/Answer negotiation to obtain capabilities.
-  console.error("BUG [SdpEndpoint.generateRtpCapabilities1] Not implemented");
-  process.exit(1);
-
-  let caps: RtpCapabilities;
-  return caps;
-}
-
-export function generateRtpCapabilities2(
-  localCaps: RtpCapabilities,
-  remoteCaps: RtpCapabilities
-): RtpCapabilities {
-  // TODO: Use matching to obtain capabilities.
-  console.error("BUG [SdpEndpoint.generateRtpCapabilities2] Not implemented");
-  process.exit(1);
-
-  let caps: RtpCapabilities;
-  return caps;
-}

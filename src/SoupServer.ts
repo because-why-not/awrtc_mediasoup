@@ -89,30 +89,21 @@ class SoupServer {
         const outgoingTransport = await this.createTransport()
         const outgoingSdpEndpoint = this.createSdpEndpoint(outgoingTransport);
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
+        const consumers : Consumer[] = [];
 
-        const consumer1 = await outgoingTransport
+        for (const producer of from.producers) {
+            const consumer = await outgoingTransport
             .consume({
-                producerId: from.producers[0].id,
+                producerId: producer.id,
                 rtpCapabilities: endpointRtpCapabilities,
                 enableRtx: true,
-                paused: false,
+                paused: producer.paused,
                 ignoreDtx: true
             })
             .catch((error) => console.error("transport.consume() failed:", error));
-        const consumer2 = await outgoingTransport
-            .consume({
-                producerId: from.producers[1].id,
-                rtpCapabilities: endpointRtpCapabilities,
-                enableRtx: true,
-                paused: false,
-                ignoreDtx: true
-            })
-            .catch((error) => console.error("transport.consume() failed:", error));
-
-        outgoingSdpEndpoint.addConsumer(consumer1 as Consumer);
-        outgoingSdpEndpoint.addConsumer(consumer2 as Consumer);
-
-        const consumers = [consumer1 as Consumer, consumer2 as Consumer];
+            outgoingSdpEndpoint.addConsumer(consumer as Consumer);
+            consumers.push(consumer as Consumer);
+        }
         const outgingPeer = new OutgoingSoupPeer(outgoingTransport, outgoingSdpEndpoint, consumers, logger);
         from.addConsumer(outgingPeer);
 
@@ -131,7 +122,7 @@ class SoupServer {
 
     createSdpEndpoint(transport: WebRtcTransport ): SdpBridge.SdpEndpoint {
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
-        return SdpBridge.createSdpEndpoint(transport, endpointRtpCapabilities);
+        return new SdpBridge.SdpEndpoint(transport, endpointRtpCapabilities);
     }
 
 
