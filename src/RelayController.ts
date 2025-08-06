@@ -1,7 +1,6 @@
-import { PeerPool, SignalingPeer, AppConfig, ConnectionId, NetEventType, NetworkEvent, Protocol, ILogger } from "awrtc_signaling";
+import { PeerPool, SignalingPeer, AppConfig, ConnectionId, NetEventType, NetworkEvent, Protocol, ILogger, ISignalingPeer} from "awrtc_signaling";
 import { SoupServer } from "./SoupServer";
 import { IncomingSoupPeer, OutgoingSoupPeer, PeerConnectionStateCallback, SoupPeerConnectionState } from "./SoupPeer";
-import { ISignalingPeer } from "awrtc_signaling/out/SignalingPeer";
 import { DummyInProtocol, DummyOutProtocol } from "./DummyProtocol";
 import { add } from "lodash";
 

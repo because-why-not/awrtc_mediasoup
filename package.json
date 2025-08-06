@@ -18,7 +18,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/lodash": "^4.17.17",
-    "awrtc_signaling": "github:because-why-not/awrtc_signaling#6c0a10dc8c93349259c57f71b9541b7254449f90",
+    "awrtc_signaling": "github:because-why-not/awrtc_signaling#89b368057bdda72af5fa5e3a122639f2dae12616",
     "express": "^5.1.0",
     "lodash": "^4.17.21",
     "mediasoup": "^3.16.5",
