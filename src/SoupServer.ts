@@ -82,6 +82,12 @@ class SoupServer {
             });
     }
 
+    public close() {
+        this.webRtcServer.close();
+        this.router.close();
+        this.soupWorker.close();
+    }
+
 
 
     public async createOutgoingPeer(from: IncomingSoupPeer, logger: ILogger): Promise<OutgoingSoupPeer> {
