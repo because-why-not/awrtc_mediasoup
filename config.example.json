@@ -13,14 +13,14 @@
     ],
     "log_verbose": true,
     "httpConfig": {
-        "port": 80,
+        "port": 8080,
         "host": "::"
     },
     "httpsConfig": {
-        "port": 443,
+        "port": 8081,
         "host": "::",
-        "ssl_key_file": "ssl.key",
-        "ssl_cert_file": "ssl.crt"
+        "ssl_key_file": "privkey.pem",
+        "ssl_cert_file": "fullchain.pem"
     },
     "maxPayload": 1048576,
     "apps": [
