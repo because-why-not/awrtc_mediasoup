@@ -149,9 +149,14 @@ export class SdpEndpoint {
       
         let producer: Producer;
         try {
+
           producer = await this.transport.produce({
             kind: mediaKind,
             rtpParameters: producerParams,
+            // pause the producer if the client created a media type in the offer
+            // but indicated they do not send (peer to peer clients
+            // can change this on the fly but our server can not)
+            // the paused flag is later used to create the correct offer and answer messages!
             paused: media.direction === "recvonly" || media.direction === "inactive",
           });
         } catch (error) {
@@ -219,10 +224,22 @@ export class SdpEndpoint {
       } as any);
     }
 
+
+
     if (this.producerOfferSctpMedia) {
       sdpBuilder.sendSctpAssociation({
         offerMediaObject: this.producerOfferSctpMedia,
       });
+    }
+
+    // Clients set the "recvonly" flag when they are not sending a media type,
+    // allowing other peers to send that type in return. Since Mediasoup is unidirectional,
+    // we must set that media type to "inactive" here.
+    for (let i = 0; i < this.producers.length; i++) {
+      const mid = this.producers[i].rtpParameters.mid ?? "nomid";
+      if (this.producers[i].paused) {
+        (sdpBuilder._findMediaSection(mid) as any)._mediaObject.direction = "inactive";
+      }
     }
 
     this.localSdp = sdpBuilder.getSdp();
