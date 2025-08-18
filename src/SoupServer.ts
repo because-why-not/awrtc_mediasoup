@@ -1,15 +1,19 @@
 import * as mediasoup from "mediasoup";
 import * as RtpHelper from "./rtphelper";
 import * as SdpBridge from "./external/mediasoup-sdp-bridge/index";
-import { Worker, WebRtcServer, Router, RtpCodecCapability, WebRtcTransportOptions, RtpCapabilities, WebRtcTransport, Consumer, TransportListenInfo } from "mediasoup/types"
-import { IncomingSoupPeer, OutgoingSoupPeer, SdpMessageObj } from "./SoupPeer";
+import { Worker, WebRtcServer, Router, WebRtcTransport, Consumer, TransportListenInfo } from "mediasoup/types"
+import { IncomingSoupPeer, OutgoingSoupPeer } from "./SoupPeer";
 import { ILogger } from "awrtc_signaling";
 
 
-console.log(mediasoup.version);
-console.log(mediasoup.workerBin);
+console.log(`mediasoup version: ${mediasoup.version}`);
 
-
+/* This is a bare bone mediasoup server. It only provides the basic functionality needed
+ * to create incoming and outgoing peers with the other awrtc based apps. 
+ * 
+ * You likely want to customize the numbers of servers, webRtcServer and router configurations 
+ * beyond what is implemented here.
+ */
 class SoupServer {
 
     public soupWorker: Worker;
@@ -45,9 +49,6 @@ class SoupServer {
         this.soupWorker = await mediasoup.createWorker(
             {
                 logLevel: "warn",
-                //dtlsCertificateFile : "/home/foo/dtls-cert.pem",
-                //dtlsPrivateKeyFile  : "/home/foo/dtls-key.pem",
-                appData: { foo: 123 }
             });
 
         this.soupWorker.on('died', () => {
@@ -78,7 +79,7 @@ class SoupServer {
 
         this.webRtcServer = await this.soupWorker.createWebRtcServer(
             {
-                listenInfos:listenInfos
+                listenInfos: listenInfos
             });
     }
 
@@ -88,25 +89,23 @@ class SoupServer {
         this.soupWorker.close();
     }
 
-
-
     public async createOutgoingPeer(from: IncomingSoupPeer, logger: ILogger): Promise<OutgoingSoupPeer> {
 
         const outgoingTransport = await this.createTransport()
         const outgoingSdpEndpoint = this.createSdpEndpoint(outgoingTransport);
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
-        const consumers : Consumer[] = [];
+        const consumers: Consumer[] = [];
 
         for (const producer of from.producers) {
             const consumer = await outgoingTransport
-            .consume({
-                producerId: producer.id,
-                rtpCapabilities: endpointRtpCapabilities,
-                enableRtx: true,
-                paused: producer.paused,
-                ignoreDtx: true
-            })
-            .catch((error) => console.error("transport.consume() failed:", error));
+                .consume({
+                    producerId: producer.id,
+                    rtpCapabilities: endpointRtpCapabilities,
+                    enableRtx: true,
+                    paused: producer.paused,
+                    ignoreDtx: true
+                })
+                .catch((error) => console.error("transport.consume() failed:", error));
             outgoingSdpEndpoint.addConsumer(consumer as Consumer);
             consumers.push(consumer as Consumer);
         }
@@ -126,7 +125,7 @@ class SoupServer {
         return incomingPeer;
     }
 
-    createSdpEndpoint(transport: WebRtcTransport ): SdpBridge.SdpEndpoint {
+    createSdpEndpoint(transport: WebRtcTransport): SdpBridge.SdpEndpoint {
         const endpointRtpCapabilities = RtpHelper.rtpMinimal;
         return new SdpBridge.SdpEndpoint(transport, endpointRtpCapabilities);
     }
@@ -138,6 +137,7 @@ class SoupServer {
 
         const sctpCapabilities = { numStreams: { OS: 1024, MIS: 1024 } }
 
+        //This is based on the mediasoup example and likely needs customization
         const webRtcTransportOptions =
         {
             initialAvailableOutgoingBitrate: 1000000,
@@ -147,12 +147,12 @@ class SoupServer {
             minimumAvailableOutgoingBitrate: 600000,
             webRtcServer: this.webRtcServer,
             iceConsentTimeout: 20,
+            // this is not used currently but might be useful in the future
             enableSctp: true,
             numSctpStreams: sctpCapabilities.numStreams,
             enableUdp: true,
             enableTcp: true
         };
-
 
         const transport =
             await this.router.createWebRtcTransport(webRtcTransportOptions);
