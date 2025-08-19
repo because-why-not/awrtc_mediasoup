@@ -23,16 +23,16 @@ From bash / cmd:
 # Configuration
 
 Edit your own config.json:
-* copy config.example.json to config.json
-* Update the "ip" field and set the "announcedAddress" field if needed
-  * If you test this within your own LAN/ WiFi: ip should be the LOCAL IP to listen on
-  * If you use this on a server online with a public IP directly associated with the server: ip should be the PUBLIC IP to listen on
-  * If you use this on a server online and behind a NAT: ip should be the LOCAL IP to listen on. Add another field "announcedAddress" with the public IP name you want the clients to connect to.
-  * Note the server needs to know an exact IP address for signaling. Just using 0.0.0.0 or :: is not possible.
-* Update the ports under listenInfos (for mediasoup), httpConfig (signaling via ws) and httpsConfig (signaling via wss) to suit your needs
-  * If behind a NAT or firewall remember to open the ports
-  * if using port 80 and 443 on linux or mac make sure your user is allowed to access them
-* For secure websockets to work properly update ssl_key_file / ssl_cert_file to your own domain name specific certificate
+* copy config.example.json to config.json.
+* Update the "ip" fields under listenInfos and set the "announcedAddress" field if needed.
+  * If you test this within your own LAN / WiFi: ip should be the LOCAL IP to listen on. 
+  * If you use this on a server with a public IP directly associated with the server: ip should be the PUBLIC IP to listen on. 
+  * If you use this on a server behind a NAT: ip should be the LOCAL IP or 0.0.0.0 to listen on. Add another field "announcedAddress" with the public IP.
+  * Note just using 0.0.0.0 in the IP field does not work! The server needs an actual IP address in either the ip or announcedAddress field.
+* Update the ports under listenInfos (for mediasoup), httpConfig (signaling via ws) and httpsConfig (signaling via wss) to suit your needs.
+  * If behind a NAT or firewall remember to open the ports.
+  * if using port 80 and 443 on linux or mac make sure your user is allowed to access them.
+* For secure websockets to work properly update ssl_key_file / ssl_cert_file to your own domain name specific certificate.
 
 listenInfos example for local IP:
 
@@ -55,16 +55,34 @@ listenInfos example for local IP + public IP behind a NAT:
         {
             "protocol": "udp",
             "ip": "192.168.1.46",
-            "announcedIp": "201.20.1.13",
+            "announcedAddress": "201.20.1.13",
             "port": 20000
         },
         {
             "protocol": "tcp",
             "ip": "192.168.1.46",
-            "announcedIp": "201.20.1.13",
+            "announcedAddress": "201.20.1.13",
             "port": 20000
         }
     ]
+
+New: simplified configuration:
+
+    "announcedAddressFromDomain": "my.domain.com",
+    "listenInfos": [
+        {
+            "protocol": "udp",
+            "ip": "0.0.0.0",
+            "port": 20000
+        },
+        {
+            "protocol": "tcp",
+            "ip": "0.0.0.0",
+            "port": 20000
+        }
+    ]
+The alternative configuration will automatically get the IP at runtime for the given DNS and append the "announcedAddress"
+value for each listenInfo entry. This avoids using a specific IP and the server can automatically update via a restart.
 
 
 # Run
@@ -89,10 +107,7 @@ or wss://yourdomain.com:YOUR_WSS_PORT/relay
 
 Known issues and pitfalls
 
-* Outgoing connections from mediasoup to the client do not trigger the "onopen" event on datachannels causing the connection process to stall. Use NativeMediaConfig.UseDataChannels = false to workaround the issue. DataChannels can not be used.
-* Mediasoup treats connections as unidirectional but awrtc as bidirectional with a shared configuration. As result sending video and receiving video needs two separate calls.
+* Use IP addresses in "announcedAddress" and avoid domain names. Firefox (and possibly other) fail to connect if domain names are used
+* Outgoing connections from mediasoup to the client do not trigger the "onopen" event on data channels causing the connection process to stall. Use NativeMediaConfig.UseDataChannels = false to work around the issue. DataChannels can not be used.
+* Mediasoup treats connections as unidirectional but awrtc as bidirectional with a shared configuration. As result, sending video and receiving video needs two separate calls.
 * Codecs are currently hard coded to VP8 for video and OPUS for audio. Edit rtphelper.ts to try other configurations.
-  
-
-
-
