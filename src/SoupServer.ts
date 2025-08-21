@@ -174,7 +174,9 @@ class SoupServer {
     if (maxIncomingBitrate) {
       try {
         await transport.setMaxIncomingBitrate(maxIncomingBitrate);
-      } catch (error) {}
+      } catch (error) {
+        console.error(error)
+      }
     }
 
     return transport;

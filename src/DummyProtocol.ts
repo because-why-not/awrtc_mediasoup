@@ -38,7 +38,9 @@ abstract class DummyProtocol extends Protocol {
       const incMessage = this.evtToString(evt);
       this.mLog.log("INC:" + incMessage);
 
-      this.handleMessage(incMessage, evt.ConnectionId);
+      this.handleMessage(incMessage, evt.ConnectionId).catch(err=>{
+          this.mLog.error("Error during handleMessage: " + JSON.stringify(err));
+        });
     } else if (evt.Type == NetEventType.Disconnected) {
       this.mLog.log(this.getIdentity() + " disconnected from client side.");
       //we remove out dummy peer if our only connection gets cut
@@ -195,7 +197,7 @@ export class DummyOutProtocol extends DummyProtocol {
     super(logger);
   }
 
-  override async handleMessage(msg: string, id: ConnectionId): Promise<void> {
+  override async handleMessage(msg: string, _id: ConnectionId): Promise<void> {
     try {
       const json: unknown = JSON.parse(msg);
       if (typeof json === "number") {

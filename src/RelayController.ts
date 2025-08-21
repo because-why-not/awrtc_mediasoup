@@ -3,9 +3,6 @@ import {
   SignalingPeer,
   AppConfig,
   ConnectionId,
-  NetEventType,
-  NetworkEvent,
-  Protocol,
   ILogger,
   ISignalingPeer,
 } from "awrtc_signaling";
@@ -13,11 +10,9 @@ import { SoupServer } from "./SoupServer";
 import {
   IncomingSoupPeer,
   OutgoingSoupPeer,
-  PeerConnectionStateCallback,
   SoupPeerConnectionState,
 } from "./SoupPeer";
 import { DummyInProtocol, DummyOutProtocol } from "./DummyProtocol";
-import { add } from "lodash";
 
 interface AddressSenderDict {
   [key: string]: Sender;
@@ -299,7 +294,9 @@ export class RelayController extends PeerPool {
         //tell the client they successfully listening on the address
         peer.acceptListening(address);
         //create peer connection
-        this.createNewIncomingRelay(address, peer);
+        this.createNewIncomingRelay(address, peer).catch(err=>{
+          this.mLog.error("Error during createNewIncomingRelay: " + JSON.stringify(err));
+        });
       } else {
         this.mLog.log("New sender denied. Address in use.");
         //for simplicity we block any receivers if no sender is available
@@ -313,7 +310,9 @@ export class RelayController extends PeerPool {
         this.mLog.log("New receiver on address " + address);
         this.addListener(peer, address);
         peer.acceptListening(address);
-        this.createNewOutgoingRelay(address, peer);
+        this.createNewOutgoingRelay(address, peer).catch(err=>{
+          this.mLog.error("Error during createNewOutgoingRelay: " + JSON.stringify(err));
+        });
       } else {
         this.mLog.log(
           "New receiver denied. Unknown sender or sender not yet ready",

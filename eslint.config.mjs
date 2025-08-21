@@ -4,7 +4,8 @@ import tseslint from 'typescript-eslint';
 export default tseslint.config(
     {
         ignores: [
-            'out/**/*.*',
+            'dist/**/*.*',
+            'private/**/*.*',
         ],
     },
     eslint.configs.recommended,
@@ -17,6 +18,13 @@ export default tseslint.config(
                     "allow": [
                         "/config.json$"
                     ]
+                }
+            ],
+            "@typescript-eslint/no-unused-vars": [
+                "error",
+                {
+                    "argsIgnorePattern": "^_",
+                    "varsIgnorePattern": "^_"
                 }
             ]
         }

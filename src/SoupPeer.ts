@@ -106,25 +106,24 @@ export class SoupPeer {
     });
 
     this.mTransport.observer.on("newdataproducer", (dataProducer) => {
-      this.mLog.warn("newdataproducer");
+      this.mLog.warn("Unexpected event triggered: newdataproducer" + dataProducer.label);
       //dataProducers.set(dataProducer.id, dataProducer);
       //dataProducer.observer.on('close', () => dataProducers.delete(dataProducer.id));
     });
 
     this.mTransport.observer.on("newdataconsumer", (dataConsumer) => {
-      this.mLog.warn("newdataconsumer");
+      this.mLog.warn("Unexpected event triggered: newdataconsumer" + dataConsumer.label);
       //dataConsumers.set(dataConsumer.id, dataConsumer);
       //dataConsumer.observer.on('close', () => dataConsumers.delete(dataConsumer.id));
     });
     /*
-                await transport.enableTraceEvent(['bwe']);
-                transport.on('trace', (trace) => {
-        
-                    this.mLog.debug(
-                        'transport "trace" event [transportId:%s, trace.type:%s, trace:%o]',
-                        transport.id, trace.type, trace);
-                });
-        */
+    await transport.enableTraceEvent(['bwe']);
+    transport.on('trace', (trace) => {
+        this.mLog.debug(
+            'transport "trace" event [transportId:%s, trace.type:%s, trace:%o]',
+            transport.id, trace.type, trace);
+    });
+    */
   }
 
   private clearConnectionTimeout(): void {
