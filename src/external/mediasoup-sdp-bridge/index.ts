@@ -1,7 +1,6 @@
 import * as MsSdpUtils from "mediasoup-client/lib/handlers/sdp/commonUtils";
 import { RemoteSdp } from "mediasoup-client/lib/handlers/sdp/RemoteSdp";
 
-
 import {
   Consumer,
   MediaKind,
@@ -20,7 +19,6 @@ import * as SdpUtils from "./SdpUtils";
 /* eslint-disable */
 
 export class SdpEndpoint {
-  
   private transport: Transport;
   private webRtcTransport: WebRtcTransport;
 
@@ -57,11 +55,11 @@ export class SdpEndpoint {
 
   public async processOffer(
     sdpOffer: string,
-    scalabilityMode: string
+    scalabilityMode: string,
   ): Promise<{ producers: Producer[]; dataEnabled: boolean }> {
     if (this.remoteSdp) {
       throw new Error(
-        "[SdpEndpoint.processOffer] A remote description was already set"
+        "[SdpEndpoint.processOffer] A remote description was already set",
       );
     }
 
@@ -92,7 +90,7 @@ export class SdpEndpoint {
       });
     } catch (error) {
       const err = new Error(
-        "[SdpEndpoint.processOffer] Unexpected error while extracting DTLS parameters"
+        "[SdpEndpoint.processOffer] Unexpected error while extracting DTLS parameters",
       );
       if (error instanceof Error) {
         err.message += `; error: ${error.message}`;
@@ -131,7 +129,7 @@ export class SdpEndpoint {
         // Skip media if the same kind was already processed.
         // WARNING: Sending more than 1 audio or 1 video is a BUG in the client.
         console.warn(
-          `WARNING [SdpEndpoint.processOffer] Client BUG: More than 1 '${mediaKind}' media was requested; skipping it`
+          `WARNING [SdpEndpoint.processOffer] Client BUG: More than 1 '${mediaKind}' media was requested; skipping it`,
         );
         continue;
       }
@@ -142,35 +140,37 @@ export class SdpEndpoint {
         remoteSdpObj,
         this.localCaps,
         mediaKind,
-        scalabilityMode
+        scalabilityMode,
       );
 
       // Add a new Producer for the given media.
-      
-        let producer: Producer;
-        try {
 
-          producer = await this.transport.produce({
-            kind: mediaKind,
-            rtpParameters: producerParams,
-            // pause the producer if the client created a media type in the offer
-            // but indicated they do not send (peer to peer clients
-            // can change this on the fly but our server can not)
-            // the paused flag is later used to create the correct offer and answer messages!
-            paused: media.direction === "recvonly" || media.direction === "inactive",
-          });
-        } catch (error) {
-          let message = `[SdpEndpoint.processOffer] Cannot create mediasoup Producer, kind: ${mediaKind}`;
-          if (error instanceof Error) {
-            message += `, error: ${error.message}`;
-          }
-          console.error(`ERROR ${message}`);
-          throw new Error(message);
+      let producer: Producer;
+      try {
+        producer = await this.transport.produce({
+          kind: mediaKind,
+          rtpParameters: producerParams,
+          // pause the producer if the client created a media type in the offer
+          // but indicated they do not send (peer to peer clients
+          // can change this on the fly but our server can not)
+          // the paused flag is later used to create the correct offer and answer messages!
+          paused:
+            media.direction === "recvonly" || media.direction === "inactive",
+        });
+      } catch (error) {
+        let message = `[SdpEndpoint.processOffer] Cannot create mediasoup Producer, kind: ${mediaKind}`;
+        if (error instanceof Error) {
+          message += `, error: ${error.message}`;
         }
+        console.error(`ERROR ${message}`);
+        throw new Error(message);
+      }
 
-        this.producers.push(producer);
-      console.log(`[SdpEndpoint.processOffer] mediasoup Producer created, kind: ${producer.kind}, type: ${producer.type}, paused: ${producer.paused}`);
-      
+      this.producers.push(producer);
+      console.log(
+        `[SdpEndpoint.processOffer] mediasoup Producer created, kind: ${producer.kind}, type: ${producer.type}, paused: ${producer.paused}`,
+      );
+
       this.producerOfferMedias.push(media);
       this.producerOfferParams.push(producerParams);
 
@@ -195,7 +195,7 @@ export class SdpEndpoint {
   public createAnswer(): string {
     if (this.localSdp) {
       throw new Error(
-        "[SdpEndpoint.createAnswer] A local description was already set"
+        "[SdpEndpoint.createAnswer] A local description was already set",
       );
     }
 
@@ -213,7 +213,7 @@ export class SdpEndpoint {
       // Each call to RemoteSdp.send() creates a new AnswerMediaSection,
       // which always assumes an `a=recvonly` direction.
       const answerRtpParameters = this.producers[i].rtpParameters;
-      
+
       sdpBuilder.send({
         offerMediaObject: this.producerOfferMedias[i],
         reuseMid: undefined,
@@ -223,8 +223,6 @@ export class SdpEndpoint {
         extmapAllowMixed: false,
       } as any);
     }
-
-
 
     if (this.producerOfferSctpMedia) {
       sdpBuilder.sendSctpAssociation({
@@ -238,7 +236,8 @@ export class SdpEndpoint {
     for (let i = 0; i < this.producers.length; i++) {
       const mid = this.producers[i].rtpParameters.mid ?? "nomid";
       if (this.producers[i].paused) {
-        (sdpBuilder._findMediaSection(mid) as any)._mediaObject.direction = "inactive";
+        (sdpBuilder._findMediaSection(mid) as any)._mediaObject.direction =
+          "inactive";
       }
     }
 
@@ -265,7 +264,7 @@ export class SdpEndpoint {
   public createOffer(): string {
     if (this.localSdp) {
       throw new Error(
-        "[SdpEndpoint.createOffer] A local description was already set"
+        "[SdpEndpoint.createOffer] A local description was already set",
       );
     }
 
@@ -304,9 +303,10 @@ export class SdpEndpoint {
         streamId: sendMsid,
         trackId: `${sendMsid}-${kind}`,
       });
-      
+
       if (this.consumers[i].paused) {
-        (sdpBuilder._findMediaSection(mid) as any)._mediaObject.direction = "recvonly";
+        (sdpBuilder._findMediaSection(mid) as any)._mediaObject.direction =
+          "recvonly";
       }
     }
 
@@ -322,7 +322,7 @@ export class SdpEndpoint {
   public async processAnswer(sdpAnswer: string): Promise<void> {
     if (this.remoteSdp) {
       throw new Error(
-        "[SdpEndpoint.processAnswer] A remote description was already set"
+        "[SdpEndpoint.processAnswer] A remote description was already set",
       );
     }
 
@@ -343,7 +343,7 @@ export class SdpEndpoint {
       });
     } catch (error) {
       const err = new Error(
-        "[SdpEndpoint.processAnswer] Unexpected error while extracting DTLS parameters"
+        "[SdpEndpoint.processAnswer] Unexpected error while extracting DTLS parameters",
       );
       if (error instanceof Error) {
         err.message += `; error: ${error.message}`;
@@ -372,5 +372,3 @@ export class SdpEndpoint {
     // }
   }
 }
-
-

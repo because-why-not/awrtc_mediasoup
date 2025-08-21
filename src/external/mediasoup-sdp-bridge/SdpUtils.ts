@@ -6,11 +6,7 @@ import * as MsSdpUnifiedPlanUtils from "mediasoup-client/lib/handlers/sdp/unifie
 
 import * as MsSdpUtils from "mediasoup-client/lib/handlers/sdp/commonUtils";
 import * as MsOrtc from "mediasoup-client/lib/ortc";
-import {
-  MediaKind,
-  RtpCapabilities,
-  RtpParameters,
-} from "mediasoup/types";
+import { MediaKind, RtpCapabilities, RtpParameters } from "mediasoup/types";
 import { MediaAttributes } from "sdp-transform";
 import _ from "lodash";
 
@@ -22,7 +18,7 @@ import _ from "lodash";
 // MsSdpUtils.extractRtpCapabilities() only works for 1 audio and 1 video.
 export function sdpToConsumerRtpCapabilities(
   sdpObject: object,
-  localCaps: RtpCapabilities
+  localCaps: RtpCapabilities,
 ): RtpCapabilities {
   // Clone input to avoid side effect modifications.
   const _localCaps = JSON.parse(JSON.stringify(localCaps));
@@ -41,7 +37,11 @@ export function sdpToConsumerRtpCapabilities(
   MsOrtc.validateRtpCapabilities(_localCaps);
   MsOrtc.validateRtpCapabilities(caps as any);
 
-  const extendedCaps = MsOrtc.getExtendedRtpCapabilities(caps as any, _localCaps, false);
+  const extendedCaps = MsOrtc.getExtendedRtpCapabilities(
+    caps as any,
+    _localCaps,
+    false,
+  );
   const consumerCaps = MsOrtc.getRecvRtpCapabilities(extendedCaps);
 
   // DEBUG: Uncomment for details.
@@ -61,7 +61,7 @@ export function sdpToProducerRtpParameters(
   sdpObject: any,
   localCaps: RtpCapabilities,
   kind: MediaKind,
-  scalabilityMode: string
+  scalabilityMode: string,
 ): RtpParameters {
   // Clone input to avoid side effect modifications.
   const _localCaps = JSON.parse(JSON.stringify(localCaps));
@@ -84,7 +84,11 @@ export function sdpToProducerRtpParameters(
   MsOrtc.validateRtpCapabilities(_localCaps);
   MsOrtc.validateRtpCapabilities(caps as any);
 
-  const extendedCaps = MsOrtc.getExtendedRtpCapabilities(_localCaps, caps as any, false);
+  const extendedCaps = MsOrtc.getExtendedRtpCapabilities(
+    _localCaps,
+    caps as any,
+    false,
+  );
   const producerParams = MsOrtc.getSendingRtpParameters(kind, extendedCaps);
 
   // DEBUG: Uncomment for details.
@@ -101,7 +105,7 @@ export function sdpToProducerRtpParameters(
   for (const codec of producerParams.codecs) {
     if (rtxCodecRegex.test(codec.mimeType)) {
       const extendedCodec = extendedCaps.codecs.find(
-        (c: any) => c.localPayloadType === codec.parameters.apt
+        (c: any) => c.localPayloadType === codec.parameters.apt,
       );
       if (extendedCodec) {
         codec.payloadType = extendedCodec.remoteRtxPayloadType;
@@ -113,7 +117,7 @@ export function sdpToProducerRtpParameters(
           c.mimeType === codec.mimeType &&
           c.clockRate === codec.clockRate &&
           c.channels === codec.channels &&
-          _.isEqual(c.localParameters, codec.parameters)
+          _.isEqual(c.localParameters, codec.parameters),
       );
       if (extendedCodec) {
         codec.payloadType = extendedCodec.remotePayloadType;
@@ -122,7 +126,7 @@ export function sdpToProducerRtpParameters(
   }
   for (const headerExt of producerParams.headerExtensions ?? []) {
     const extendedExt = extendedCaps.headerExtensions.find(
-      (h: any) => h.kind === kind && h.uri === headerExt.uri
+      (h: any) => h.kind === kind && h.uri === headerExt.uri,
     );
     if (extendedExt) {
       headerExt.id = extendedExt.recvId;
