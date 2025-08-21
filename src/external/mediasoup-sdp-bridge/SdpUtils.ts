@@ -155,8 +155,8 @@ export function sdpToProducerRtpParameters(
       sdpMediaObj.rids
         ?.filter((rid) => rid.direction === "send")
         .forEach((rid, i) => {
-          producerParams.encodings![i] = {
-            ...producerParams.encodings![i],
+          producerParams.encodings[i] = {
+            ...producerParams.encodings[i],
 
             rid: String(rid.id),
 

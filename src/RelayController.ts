@@ -170,7 +170,7 @@ export class RelayController extends PeerPool {
         const loggerBase = this.mLog.createSub(peerName + "soup_" + address);
 
         //create incoming peer
-        let soupPeer = await this.mSoupServer.createIncomingPeer(loggerBase);
+        const soupPeer = await this.mSoupServer.createIncomingPeer(loggerBase);
 
         //create a new SignalingPeer to connect to the incomingSignalingPeer
         //instead of events coming from websockets we feed the events into it via DummyProtocol
@@ -293,12 +293,12 @@ export class RelayController extends PeerPool {
     //(hasAddressSharing flag is true)
     public acceptJoin(address: string, client: ISignalingPeer): void {
 
-        var serverConnections = this.getListenerPeers(address);
+        const serverConnections = this.getListenerPeers(address);
 
         //in join mode every connection is incoming as everyone listens together
         if (serverConnections != null) {
 
-            for (var v of serverConnections) {
+            for (const v of serverConnections) {
                 //avoid connecting the peer to itself
                 if (v != client) {
                     v.acceptIncomingConnection(client);
@@ -321,7 +321,7 @@ export class RelayController extends PeerPool {
         //if this contains 0 peers -> connection fails because no one is listening
         //If this contains 1 peer -> connect to that peer
         //TODO: if it contains multiple peers -> trigger an error as connect can only be used for 1-to-1
-        var serverConnections = this.getListenerPeers(address);
+        const serverConnections = this.getListenerPeers(address);
         if (serverConnections != null && serverConnections.length == 1) {
 
             const otherPeer = serverConnections[0];
