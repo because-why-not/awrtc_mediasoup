@@ -17,7 +17,7 @@ import { v4 as uuidv4 } from "uuid";
 
 import * as SdpUtils from "./SdpUtils";
 
-
+/* eslint-disable */
 
 export class SdpEndpoint {
   

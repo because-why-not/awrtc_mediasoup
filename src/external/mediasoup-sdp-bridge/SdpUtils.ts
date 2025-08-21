@@ -1,3 +1,4 @@
+/* eslint-disable */
 // TODO, FIXME: Here we're assuming that Unified Plan is the correct way to
 // handle the SDP messages. For a more robust handling, this should probably
 // depend on the actual type of SDP: plain, PlanB, or UnifiedPlan.
